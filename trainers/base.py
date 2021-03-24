@@ -15,7 +15,7 @@ from trainers.utils import positional_frequency, top_position_matching
 
 
 class AbstractTrainer(metaclass=ABCMeta):
-    def __init__(self, args, model, train_loader, val_loader, test_loader, export_root):
+    def __init__(self, args, model, train_loader, val_loader, test_loader, export_root, train_popularity_vector_loader, val_popularity_vector_loader, test_popularity_vector_loader):
         self.args = args
         self.device = args.device
         self.model = model.to(self.device)
@@ -40,6 +40,13 @@ class AbstractTrainer(metaclass=ABCMeta):
         self.logger_service = LoggerService(self.train_loggers, self.val_loggers)
         self.log_period_as_iter = args.log_period_as_iter
 
+        self.train_popularity_vector = train_popularity_vector_loader.popularity_vector
+        self.train_item_similarity_matrix = train_popularity_vector_loader.item_similarity_matrix
+        self.val_popularity_vector = val_popularity_vector_loader.popularity_vector
+        self.val_item_similarity_matrix = val_popularity_vector_loader.item_similarity_matrix
+        self.test_popularity_vector = test_popularity_vector_loader.popularity_vector
+        self.test_item_similarity_matrix = test_popularity_vector_loader.item_similarity_matrix
+
     @abstractmethod
     def add_extra_loggers(self):
         pass
@@ -62,7 +69,7 @@ class AbstractTrainer(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def calculate_metrics(self, batch):
+    def calculate_metrics(self, batch, popularity_vector, item_similarity_matrix):
         pass
 
     def train(self):
@@ -123,12 +130,15 @@ class AbstractTrainer(metaclass=ABCMeta):
             for batch_idx, batch in enumerate(tqdm_dataloader):
                 batch = [x.to(self.device) for x in batch]
 
-                metrics = self.calculate_metrics(batch)
+                metrics = self.calculate_metrics(batch, self.val_popularity_vector, self.val_item_similarity_matrix)
 
                 for k, v in metrics.items():
                     average_meter_set.update(k, v)
                 description_metrics = ['NDCG@%d' % k for k in self.metric_ks[:3]] +\
-                                      ['Recall@%d' % k for k in self.metric_ks[:3]]
+                                      ['Recall@%d' % k for k in self.metric_ks[:3]] + \
+                                      ['AvgPop@%d' % k for k in self.metric_ks[:3]] + \
+                                      ['EFD@%d' % k for k in self.metric_ks[:3]] + \
+                                      ['Diversity@%d' % k for k in self.metric_ks[:3]]
                 description = 'Val: ' + ', '.join(s + ' {:.3f}' for s in description_metrics)
                 description = description.replace('NDCG', 'N').replace('Recall', 'R')
                 description = description.format(*(average_meter_set[k].avg for k in description_metrics))
@@ -157,12 +167,15 @@ class AbstractTrainer(metaclass=ABCMeta):
             for batch_idx, batch in enumerate(tqdm_dataloader):
                 batch = [x.to(self.device) for x in batch]
 
-                metrics = self.calculate_metrics(batch)
+                metrics = self.calculate_metrics(batch, self.test_popularity_vector, self.test_item_similarity_matrix)
 
                 for k, v in metrics.items():
                     average_meter_set.update(k, v)
                 description_metrics = ['NDCG@%d' % k for k in self.metric_ks[:3]] +\
-                                      ['Recall@%d' % k for k in self.metric_ks[:3]]
+                                      ['Recall@%d' % k for k in self.metric_ks[:3]] + \
+                                      ['AvgPop@%d' % k for k in self.metric_ks[:3]] + \
+                                      ['EFD@%d' % k for k in self.metric_ks[:3]] + \
+                                      ['Diversity@%d' % k for k in self.metric_ks[:3]]
                 description = 'Val: ' + ', '.join(s + ' {:.3f}' for s in description_metrics)
                 description = description.replace('NDCG', 'N').replace('Recall', 'R')
                 description = description.format(*(average_meter_set[k].avg for k in description_metrics))
@@ -213,10 +226,10 @@ class AbstractTrainer(metaclass=ABCMeta):
                     test_items = torch.cat((test_items, candidates[:, 0]))
         print('Average Training Positional Frequency of Recommendations: ' + str(
             positional_frequency(recommendations.cpu().numpy(), recommendation_positions.cpu().numpy(),
-                                 position_distributions[:].cpu().numpy(), 1)))
+                                 position_distributions[:].cpu().numpy())))
         print('Average Training Positional Frequency of Test items: ' + str(
             positional_frequency(test_items.cpu().numpy(), recommendation_positions.cpu().numpy(),
-                                 position_distributions[:].cpu().numpy(), 1)))
+                                 position_distributions[:].cpu().numpy())))
         print('Average Position Matching of Recommendations with Top 1 Training Positions: ' + str(
             top_position_matching(recommendations.cpu().numpy(), recommendation_positions.cpu().numpy(),
                                   position_distributions[:].cpu().numpy())))

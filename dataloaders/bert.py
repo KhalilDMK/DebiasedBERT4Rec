@@ -6,6 +6,7 @@ import torch.utils.data as data_utils
 import numpy as np
 from collections import Counter
 import pandas as pd
+from sklearn.metrics.pairwise import cosine_similarity
 
 
 class BertDataloader(AbstractDataloader):
@@ -43,8 +44,13 @@ class BertDataloader(AbstractDataloader):
         return train_loader, val_loader, test_loader
 
     def get_train_position_distributions_dataloader(self):
-        position_distributions = BertPositionDistribution(self.train, self.max_len, self.args.num_items)
-        return position_distributions
+        position_distribution_loader = BertPositionDistribution(self.train, self.max_len, self.args.num_items)
+        return position_distribution_loader.position_distributions
+
+    def get_popularity_vector_dataloader(self, include_test=False, mode='test'):
+        answers = self.val if mode == 'val' else self.test
+        popularity_vector_loader = BertPopularityVector(self.train, answers, self.user_count, self.item_count, self.max_len, include_test)
+        return popularity_vector_loader
 
     def _get_train_loader(self):
         dataset = self._get_train_dataset()
@@ -82,9 +88,7 @@ class BertTrainDataset(data_utils.Dataset):
         self.max_len = max_len
         self.mask_prob = mask_prob
         self.mask_token = mask_token
-        print(self.mask_token)
         self.num_items = num_items
-        print(self.num_items)
         self.rng = rng
 
     def __len__(self):
@@ -97,7 +101,6 @@ class BertTrainDataset(data_utils.Dataset):
 
         tokens = []
         labels = []
-        #print(seq)
         for s in seq:
             prob = self.rng.random()
             if prob < self.mask_prob:
@@ -126,7 +129,6 @@ class BertTrainDataset(data_utils.Dataset):
         tokens = [0] * mask_len + tokens
         labels = [0] * mask_len + labels
 
-        #print(tokens)
 
         return torch.LongTensor(tokens), torch.LongTensor(labels)
 
@@ -137,7 +139,6 @@ class BertTrainDataset(data_utils.Dataset):
     #    seq_lengths = sorted(set([len(x) for x in seq]))
     #    #for length in seq_lengths:
     #    print(seq_lengths)
-
 
 
 class BertEvalDataset(data_utils.Dataset):
@@ -168,31 +169,61 @@ class BertEvalDataset(data_utils.Dataset):
 
         return torch.LongTensor(seq), torch.LongTensor(candidates), torch.LongTensor(labels)
 
+
 class BertPositionDistribution(data_utils.Dataset):
     def __init__(self, u2seq, max_len, num_items):
         self.num_items = num_items
         self.u2seq = u2seq
         self.items = list(range(1, self.num_items + 1))
         self.max_len = max_len
-        #print(sum([self.num_items in x for x in self.u2seq.values()]))
         self.u2seq = [x[-self.max_len:] for x in self.u2seq.values()]
-        #print(sum([self.num_items in x for x in self.u2seq]))
         self.seq = np.zeros([len(self.u2seq), len(max(self.u2seq, key=lambda x: len(x)))])
         for i, j in enumerate(self.u2seq):
             self.seq[i][0:len(j)] = j
-        #print(self.seq)
-        self.occurrences = [Counter(self.seq[:, j]) for j in range(self.max_len)]
-        #print([self.num_items in x for x in self.occurrences])
+        occurrences = [Counter(self.seq[:, j]) for j in range(self.max_len)]
         item_index = pd.Index(range(self.num_items + 1))
-        #print(pd.DataFrame(self.occurrences).transpose().reindex(item_index).sort_index().fillna(0))
-        self.occurrences = pd.DataFrame(self.occurrences).transpose().reindex(item_index).sort_index().fillna(0).values
+        occurrences = pd.DataFrame(occurrences).transpose().reindex(item_index).sort_index().fillna(0).values
+        softmax = torch.nn.Softmax()
+        self.position_distributions = softmax(torch.Tensor(occurrences))
 
     def __len__(self):
         return len(self.items)
 
     def __getitem__(self, index):
-        item_pos_dist = self.occurrences[index]
-        softmax = torch.nn.Softmax()
+        return self.position_distributions[index]
 
-        return softmax(torch.Tensor(item_pos_dist))
 
+class BertPopularityVector(data_utils.Dataset):
+    def __init__(self, u2seq, u2answer, user_count, item_count, max_len, include_test=False):
+        self.u2seq = u2seq
+        self.u2answer = u2answer
+        self.u2seq = [x[-max_len:] for x in self.u2seq.values()]
+        self.seq = np.zeros([len(self.u2seq), len(max(self.u2seq, key=lambda x: len(x)))])
+        for i, j in enumerate(self.u2seq):
+            self.seq[i][0:len(j)] = j
+        self.seq = {i: list(self.seq[i]) for i in range(len(self.seq))}
+        if include_test:
+            self.seq = {k:self.seq[k] + self.u2answer[k] for k in self.seq}
+        users = np.array([x for x in self.seq.keys() for i in range(len(self.seq[x]))])
+        items = np.array([int(x) for y in self.seq.values() for x in y])
+        self.interaction_matrix = pd.crosstab(users, items)
+        del self.interaction_matrix[0]
+        missing_columns = list(set(range(1, item_count + 1)) - set(list(self.interaction_matrix)))
+        missing_rows = list(set(range(user_count)) - set(self.interaction_matrix.index))
+        for missing_column in missing_columns:
+            self.interaction_matrix[missing_column] = [0] * len(self.interaction_matrix)
+        for missing_row in missing_rows:
+            self.interaction_matrix.loc[missing_row] = [0] * item_count
+        self.interaction_matrix = np.array(self.interaction_matrix[list(range(1, item_count + 1))].sort_index())
+        self.popularity_vector = np.sum(self.interaction_matrix, axis=0)
+        self.popularity_vector = (self.popularity_vector / max(self.popularity_vector)) ** 0.5
+        self.item_similarity_matrix = cosine_similarity(self.interaction_matrix.T)
+        np.fill_diagonal(self.item_similarity_matrix, 0)
+        self.popularity_vector = torch.Tensor(self.popularity_vector)
+        self.item_similarity_matrix = torch.Tensor(self.item_similarity_matrix)
+
+    def __len__(self):
+        return len(self.popularity_vector)
+
+    def __getitem__(self, index):
+        return self.popularity_vector[index]

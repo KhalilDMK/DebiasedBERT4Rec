@@ -72,7 +72,6 @@ class AbstractDataset(metaclass=ABCMeta):
         df = self.make_implicit(df)
         df = self.filter_triplets(df)
         df, umap, smap = self.densify_index(df)
-        print(smap)
         train, val, test = self.split_df(df, len(umap))
         dataset = {'train': train,
                    'val': val,

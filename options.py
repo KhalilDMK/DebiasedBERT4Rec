@@ -23,7 +23,7 @@ parser.add_argument('--test_model_path', type=str, default=None)
 ################
 # Dataset
 ################
-parser.add_argument('--dataset_code', type=str, default='ml-20m', choices=DATASETS.keys())
+parser.add_argument('--dataset_code', type=str, default='ml-1m', choices=DATASETS.keys())
 parser.add_argument('--min_rating', type=int, default=4, help='Only keep ratings greater than equal to this value')
 parser.add_argument('--min_uc', type=int, default=5, help='Only keep users with more than min_uc ratings')
 parser.add_argument('--min_sc', type=int, default=0, help='Only keep items with more than min_sc ratings')
