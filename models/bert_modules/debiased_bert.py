@@ -23,7 +23,7 @@ class DebiasedBERT(nn.Module):
         self.hidden = hidden
         dropout = args.bert_dropout
         #self.pos_dist = 1 - torch.cat((pos_dist[:], torch.zeros(2, self.max_len)), 0)
-        self.pos_dist = torch.cat((pos_dist[:], torch.zeros(2, self.max_len)), 0)
+        self.pos_dist = torch.cat((pos_dist, torch.zeros(2, self.max_len)), 0)
         self.device = args.device
 
         # embedding for BERT, sum of positional, segment, token embeddings

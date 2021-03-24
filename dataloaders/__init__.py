@@ -16,4 +16,7 @@ def dataloader_factory(args):
     dataloader = dataloader(args, dataset)
     train, val, test = dataloader.get_pytorch_dataloaders()
     position_distribution = dataloader.get_train_position_distributions_dataloader()
-    return train, val, test, position_distribution
+    train_popularity_vector_loader = dataloader.get_popularity_vector_dataloader(include_test=False)
+    val_popularity_vector_loader = dataloader.get_popularity_vector_dataloader(include_test=True, mode='val')
+    test_popularity_vector_loader = dataloader.get_popularity_vector_dataloader(include_test=True, mode='test')
+    return train, val, test, position_distribution, train_popularity_vector_loader, val_popularity_vector_loader, test_popularity_vector_loader

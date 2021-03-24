@@ -5,8 +5,8 @@ import torch.nn as nn
 
 
 class BERTTrainer(AbstractTrainer):
-    def __init__(self, args, model, train_loader, val_loader, test_loader, export_root):
-        super().__init__(args, model, train_loader, val_loader, test_loader, export_root)
+    def __init__(self, args, model, train_loader, val_loader, test_loader, export_root, train_popularity_vector_loader, val_popularity_vector_loader, test_popularity_vector_loader):
+        super().__init__(args, model, train_loader, val_loader, test_loader, export_root, train_popularity_vector_loader, val_popularity_vector_loader, test_popularity_vector_loader)
         self.ce = nn.CrossEntropyLoss(ignore_index=0)
 
     @classmethod
@@ -31,11 +31,11 @@ class BERTTrainer(AbstractTrainer):
         loss = self.ce(logits, labels)
         return loss
 
-    def calculate_metrics(self, batch):
+    def calculate_metrics(self, batch, popularity_vector, item_similarity_matrix):
         seqs, candidates, labels = batch
         scores = self.model(seqs)  # B x T x V
         scores = scores[:, -1, :]  # B x V
         scores = scores.gather(1, candidates)  # B x C
 
-        metrics = recalls_and_ndcgs_for_ks(scores, labels, self.metric_ks)
+        metrics = recalls_and_ndcgs_for_ks(scores, labels, self.metric_ks, popularity_vector, item_similarity_matrix)
         return metrics
