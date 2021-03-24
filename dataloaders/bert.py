@@ -1,5 +1,6 @@
 from .base import AbstractDataloader
 from .negative_samplers import negative_sampler_factory
+from .utils import position_bias_in_data
 
 import torch
 import torch.utils.data as data_utils
@@ -45,6 +46,8 @@ class BertDataloader(AbstractDataloader):
 
     def get_train_position_distributions_dataloader(self):
         position_distribution_loader = BertPositionDistribution(self.train, self.max_len, self.args.num_items)
+        pos_bias_in_data = position_bias_in_data(position_distribution_loader.position_distributions)
+        print('Temporal Propensity Bias in data: ' + str(pos_bias_in_data))
         return position_distribution_loader.position_distributions
 
     def get_popularity_vector_dataloader(self, include_test=False, mode='test'):
