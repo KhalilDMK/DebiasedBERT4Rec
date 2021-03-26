@@ -17,9 +17,10 @@ def setup_train(args):
     set_up_gpu(args)
 
     export_root = create_experiment_export_folder(args)
+    create_recommendation_folder(export_root)
     export_experiments_config_as_json(args, export_root)
 
-    pp.pprint({k: v for k, v in vars(args).items() if v is not None}, width=1)
+    #pp.pprint({k: v for k, v in vars(args).items() if v is not None}, width=1)
     return export_root
 
 
@@ -31,6 +32,11 @@ def create_experiment_export_folder(args):
     os.mkdir(experiment_path)
     print('Folder created: ' + os.path.abspath(experiment_path))
     return experiment_path
+
+
+def create_recommendation_folder(export_root):
+    if not os.path.exists(Path(export_root).joinpath('recommendations')):
+        os.mkdir(Path(export_root).joinpath('recommendations'))
 
 
 def get_name_of_experiment_path(experiment_dir, experiment_description):

@@ -15,12 +15,13 @@ import pickle
 
 
 class AbstractDataset(metaclass=ABCMeta):
-    def __init__(self, args):
+    def __init__(self, args, export_root):
         self.args = args
         self.min_rating = args.min_rating
         self.min_uc = args.min_uc
         self.min_sc = args.min_sc
         self.split = args.split
+        self.export_root = export_root
 
         assert self.min_uc >= 2, 'Need at least 2 ratings per user for validation and test'
 
@@ -62,9 +63,9 @@ class AbstractDataset(metaclass=ABCMeta):
 
     def preprocess(self):
         dataset_path = self._get_preprocessed_dataset_path()
-        if dataset_path.is_file():
-            print('Already preprocessed. Skip preprocessing')
-            return
+        #if dataset_path.is_file():
+        #    print('Already preprocessed. Skip preprocessing')
+        #   return
         if not dataset_path.parent.is_dir():
             dataset_path.parent.mkdir(parents=True)
         self.maybe_download_raw_dataset()
@@ -72,6 +73,15 @@ class AbstractDataset(metaclass=ABCMeta):
         df = self.make_implicit(df)
         df = self.filter_triplets(df)
         df, umap, smap = self.densify_index(df)
+        print(Path(self.export_root).joinpath('recommendations', 'rec_iter_' + str(self.args.iteration - 1) + '.pkl').is_file())
+        if Path(self.export_root).joinpath('recommendations', 'rec_iter_' + str(self.args.iteration - 1) + '.pkl').is_file():
+            uid = sorted(list(set(df['uid'])))
+            rating = [5] * len(uid)
+            for i in range(self.args.iteration):
+                next_timestamp = max(df['timestamp']) + 1
+                timestamp = [next_timestamp] * len(uid)
+                sid = pickle.load(Path(self.export_root).joinpath('recommendations', 'rec_iter_' + str(i) + '.pkl').open('rb'))
+                df = pd.concat([df, pd.DataFrame({'uid': uid, 'sid': sid, 'rating': rating, 'timestamp': timestamp})]).reset_index(drop=True)
         train, val, test = self.split_df(df, len(umap))
         dataset = {'train': train,
                    'val': val,
@@ -153,19 +163,19 @@ class AbstractDataset(metaclass=ABCMeta):
 
             # Generate user indices
             permuted_index = np.random.permutation(user_count)
-            train_user_index = permuted_index[                :-2*eval_set_size]
-            val_user_index   = permuted_index[-2*eval_set_size:  -eval_set_size]
-            test_user_index  = permuted_index[  -eval_set_size:                ]
+            train_user_index = permuted_index[:-2*eval_set_size]
+            val_user_index = permuted_index[-2*eval_set_size:-eval_set_size]
+            test_user_index = permuted_index[-eval_set_size:]
 
             # Split DataFrames
             train_df = df.loc[df['uid'].isin(train_user_index)]
-            val_df   = df.loc[df['uid'].isin(val_user_index)]
-            test_df  = df.loc[df['uid'].isin(test_user_index)]
+            val_df = df.loc[df['uid'].isin(val_user_index)]
+            test_df = df.loc[df['uid'].isin(test_user_index)]
 
             # DataFrame to dict => {uid : list of sid's}
             train = dict(train_df.groupby('uid').progress_apply(lambda d: list(d['sid'])))
-            val   = dict(val_df.groupby('uid').progress_apply(lambda d: list(d['sid'])))
-            test  = dict(test_df.groupby('uid').progress_apply(lambda d: list(d['sid'])))
+            val = dict(val_df.groupby('uid').progress_apply(lambda d: list(d['sid'])))
+            test = dict(test_df.groupby('uid').progress_apply(lambda d: list(d['sid'])))
             return train, val, test
         else:
             raise NotImplementedError

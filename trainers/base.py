@@ -12,6 +12,7 @@ import json
 from abc import *
 from pathlib import Path
 from trainers.utils import positional_frequency, top_position_matching
+import pickle
 
 
 class AbstractTrainer(metaclass=ABCMeta):
@@ -208,6 +209,8 @@ class AbstractTrainer(metaclass=ABCMeta):
                 else:
                     recommendations = torch.cat((recommendations, batch_recommendations))
                     recommendation_positions = torch.cat((recommendation_positions, torch.tensor([len([i for i in x if i != 0]) - 1 for x in seqs])))
+        with Path(self.export_root).joinpath('recommendations', 'rec_iter_' + str(self.args.iteration) + '.pkl').open('wb') as f:
+            pickle.dump(recommendations.tolist(), f)
         print('recommendations: ' + str(recommendations))
         print('recommendation positions: ' + str(recommendation_positions))
         return recommendations.to(self.device), recommendation_positions.to(self.device)
