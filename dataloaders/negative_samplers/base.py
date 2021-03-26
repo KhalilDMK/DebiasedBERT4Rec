@@ -4,7 +4,8 @@ import pickle
 
 
 class AbstractNegativeSampler(metaclass=ABCMeta):
-    def __init__(self, train, val, test, user_count, item_count, sample_size, seed, save_folder):
+    #def __init__(self, train, val, test, user_count, item_count, sample_size, seed, save_folder):
+    def __init__(self, train, val, test, user_count, item_count, sample_size, seed):
         self.train = train
         self.val = val
         self.test = test
@@ -12,7 +13,7 @@ class AbstractNegativeSampler(metaclass=ABCMeta):
         self.item_count = item_count
         self.sample_size = sample_size
         self.seed = seed
-        self.save_folder = save_folder
+        #self.save_folder = save_folder
 
     @classmethod
     @abstractmethod
@@ -24,18 +25,18 @@ class AbstractNegativeSampler(metaclass=ABCMeta):
         pass
 
     def get_negative_samples(self):
-        savefile_path = self._get_save_path()
+        #savefile_path = self._get_save_path()
         #if savefile_path.is_file():
         #    print('Negatives samples exist. Loading.')
         #    negative_samples = pickle.load(savefile_path.open('rb'))
         #    return negative_samples
-        print("Negative samples don't exist. Generating.")
+        #print("Generating negative samples...")
         negative_samples = self.generate_negative_samples()
-        with savefile_path.open('wb') as f:
-            pickle.dump(negative_samples, f)
+        #with savefile_path.open('wb') as f:
+        #    pickle.dump(negative_samples, f)
         return negative_samples
 
-    def _get_save_path(self):
-        folder = Path(self.save_folder)
-        filename = '{}-sample_size{}-seed{}.pkl'.format(self.code(), self.sample_size, self.seed)
-        return folder.joinpath(filename)
+    #def _get_save_path(self):
+    #    folder = Path(self.save_folder)
+    #    filename = '{}-sample_size{}-seed{}.pkl'.format(self.code(), self.sample_size, self.seed)
+    #    return folder.joinpath(filename)

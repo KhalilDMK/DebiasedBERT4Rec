@@ -69,6 +69,8 @@ parser.add_argument('--momentum', type=float, default=None, help='SGD momentum')
 # lr scheduler #
 parser.add_argument('--decay_step', type=int, default=15, help='Decay step for StepLR')
 parser.add_argument('--gamma', type=float, default=0.1, help='Gamma for StepLR')
+# feedback loop iterations #
+parser.add_argument('--num_iterations', type=int, default=5, help='Number of feedback loop iterations.')
 # epochs #
 parser.add_argument('--num_epochs', type=int, default=100, help='Number of epochs for training')
 # logger #

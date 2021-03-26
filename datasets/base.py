@@ -56,24 +56,23 @@ class AbstractDataset(metaclass=ABCMeta):
         pass
 
     def load_dataset(self):
-        self.preprocess()
-        dataset_path = self._get_preprocessed_dataset_path()
-        dataset = pickle.load(dataset_path.open('rb'))
+        dataset = self.preprocess()
+    #    dataset_path = self._get_preprocessed_dataset_path()
+    #    dataset = pickle.load(dataset_path.open('rb'))
         return dataset
 
     def preprocess(self):
-        dataset_path = self._get_preprocessed_dataset_path()
+        #dataset_path = self._get_preprocessed_dataset_path()
         #if dataset_path.is_file():
         #    print('Already preprocessed. Skip preprocessing')
         #   return
-        if not dataset_path.parent.is_dir():
-            dataset_path.parent.mkdir(parents=True)
+        #if not dataset_path.parent.is_dir():
+        #    dataset_path.parent.mkdir(parents=True)
         self.maybe_download_raw_dataset()
         df = self.load_ratings_df()
         df = self.make_implicit(df)
         df = self.filter_triplets(df)
         df, umap, smap = self.densify_index(df)
-        print(Path(self.export_root).joinpath('recommendations', 'rec_iter_' + str(self.args.iteration - 1) + '.pkl').is_file())
         if Path(self.export_root).joinpath('recommendations', 'rec_iter_' + str(self.args.iteration - 1) + '.pkl').is_file():
             uid = sorted(list(set(df['uid'])))
             rating = [5] * len(uid)
@@ -88,8 +87,9 @@ class AbstractDataset(metaclass=ABCMeta):
                    'test': test,
                    'umap': umap,
                    'smap': smap}
-        with dataset_path.open('wb') as f:
-            pickle.dump(dataset, f)
+        return dataset
+        #with dataset_path.open('wb') as f:
+        #    pickle.dump(dataset, f)
 
     def maybe_download_raw_dataset(self):
         folder_path = self._get_rawdata_folder_path()
@@ -97,7 +97,7 @@ class AbstractDataset(metaclass=ABCMeta):
            all(folder_path.joinpath(filename).is_file() for filename in self.all_raw_file_names()):
             print('Raw data already exists. Skip downloading')
             return
-        print("Raw file doesn't exist. Downloading...")
+        print("Raw data doesn't exist. Downloading...")
         if self.is_zipfile():
             tmproot = Path(tempfile.mkdtemp())
             tmpzip = tmproot.joinpath('file.zip')
@@ -119,13 +119,13 @@ class AbstractDataset(metaclass=ABCMeta):
             print()
 
     def make_implicit(self, df):
-        print('Turning into implicit ratings')
+        print('Converting ratings to interactions...')
         df = df[df['rating'] >= self.min_rating]
         # return df[['uid', 'sid', 'timestamp']]
         return df
 
     def filter_triplets(self, df):
-        print('Filtering triplets')
+        print('Filtering users and items with few interactions...')
         if self.min_sc > 0:
             item_sizes = df.groupby('sid').size()
             good_items = item_sizes.index[item_sizes >= self.min_sc]
@@ -139,7 +139,7 @@ class AbstractDataset(metaclass=ABCMeta):
         return df
 
     def densify_index(self, df):
-        print('Densifying index')
+        print('Densifying index...')
         umap = {u: i for i, u in enumerate(set(df['uid']))}
         smap = {s: i for i, s in enumerate(set(df['sid']), start=1)}
         df['uid'] = df['uid'].map(umap)
@@ -148,7 +148,7 @@ class AbstractDataset(metaclass=ABCMeta):
 
     def split_df(self, df, user_count):
         if self.args.split == 'leave_one_out':
-            print('Splitting')
+            print('Splitting data...')
             user_group = df.groupby('uid')
             user2items = user_group.progress_apply(lambda d: list(d.sort_values(by='timestamp')['sid']))
             train, val, test = {}, {}, {}
@@ -157,7 +157,7 @@ class AbstractDataset(metaclass=ABCMeta):
                 train[user], val[user], test[user] = items[:-2], items[-2:-1], items[-1:]
             return train, val, test
         elif self.args.split == 'holdout':
-            print('Splitting')
+            print('Splitting data...')
             np.random.seed(self.args.dataset_split_seed)
             eval_set_size = self.args.eval_set_size
 
@@ -187,17 +187,17 @@ class AbstractDataset(metaclass=ABCMeta):
         root = self._get_rawdata_root_path()
         return root.joinpath(self.raw_code())
 
-    def _get_preprocessed_root_path(self):
-        root = self._get_rawdata_root_path()
-        return root.joinpath('preprocessed')
+    #def _get_preprocessed_root_path(self):
+    #    root = self._get_rawdata_root_path()
+    #    return root.joinpath('preprocessed')
 
-    def _get_preprocessed_folder_path(self):
-        preprocessed_root = self._get_preprocessed_root_path()
-        folder_name = '{}_min_rating{}-min_uc{}-min_sc{}-split{}' \
-            .format(self.code(), self.min_rating, self.min_uc, self.min_sc, self.split)
-        return preprocessed_root.joinpath(folder_name)
+    #def _get_preprocessed_folder_path(self):
+    #   preprocessed_root = self._get_preprocessed_root_path()
+    #    folder_name = '{}_min_rating{}-min_uc{}-min_sc{}-split{}' \
+    #        .format(self.code(), self.min_rating, self.min_uc, self.min_sc, self.split)
+    #    return preprocessed_root.joinpath(folder_name)
 
-    def _get_preprocessed_dataset_path(self):
-        folder = self._get_preprocessed_folder_path()
-        return folder.joinpath('dataset.pkl')
+    #def _get_preprocessed_dataset_path(self):
+    #    folder = self._get_preprocessed_folder_path()
+    #    return folder.joinpath('dataset.pkl')
 

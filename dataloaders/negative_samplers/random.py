@@ -14,7 +14,7 @@ class RandomNegativeSampler(AbstractNegativeSampler):
         assert self.seed is not None, 'Specify seed for random sampling'
         np.random.seed(self.seed)
         negative_samples = {}
-        print('Sampling negative items')
+        print('Sampling negative items...')
         for user in trange(self.user_count):
             if isinstance(self.train[user][1], tuple):
                 seen = set(x[0] for x in self.train[user])
