@@ -183,7 +183,7 @@ class AbstractTrainer(metaclass=ABCMeta):
                 tqdm_dataloader.set_description(description)
 
             average_metrics = average_meter_set.averages()
-            with open(os.path.join(self.export_root, 'logs', 'test_metrics.json'), 'w') as f:
+            with open(os.path.join(self.export_root, 'logs', 'test_metrics_iter_' + str(self.args.iteration) + '.json'), 'w') as f:
                 json.dump(average_metrics, f, indent=4)
             print(average_metrics)
 

@@ -25,7 +25,7 @@ def train():
 
 
 def loop():
-    for i in range(5):
+    for i in range(args.num_iterations):
         print('#' * 20 + '\nIteration ' + str(i) + '\n' + '#' * 20)
         train()
 

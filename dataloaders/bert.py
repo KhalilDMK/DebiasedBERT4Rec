@@ -22,14 +22,14 @@ class BertDataloader(AbstractDataloader):
         train_negative_sampler = negative_sampler_factory(code, self.train, self.val, self.test,
                                                           self.user_count, self.item_count,
                                                           args.train_negative_sample_size,
-                                                          args.train_negative_sampling_seed,
-                                                          self.save_folder)
+                                                          args.train_negative_sampling_seed)
+        #                                                 , self.save_folder)
         code = args.test_negative_sampler_code
         test_negative_sampler = negative_sampler_factory(code, self.train, self.val, self.test,
                                                          self.user_count, self.item_count,
                                                          args.test_negative_sample_size,
-                                                         args.test_negative_sampling_seed,
-                                                         self.save_folder)
+                                                         args.test_negative_sampling_seed)
+        #                                                , self.save_folder)
 
         self.train_negative_samples = train_negative_sampler.get_negative_samples()
         self.test_negative_samples = test_negative_sampler.get_negative_samples()
@@ -52,6 +52,10 @@ class BertDataloader(AbstractDataloader):
 
     def get_popularity_vector_dataloader(self, include_test=False, mode='test'):
         answers = self.val if mode == 'val' else self.test
+        if include_test:
+            print('Generating ' + mode + ' popularity vector...')
+        else:
+            print('Generating train popularity vector...')
         popularity_vector_loader = BertPopularityVector(self.train, answers, self.user_count, self.item_count, self.max_len, include_test)
         return popularity_vector_loader
 
