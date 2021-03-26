@@ -47,7 +47,7 @@ class BertDataloader(AbstractDataloader):
     def get_train_position_distributions_dataloader(self):
         position_distribution_loader = BertPositionDistribution(self.train, self.max_len, self.args.num_items)
         pos_bias_in_data = position_bias_in_data(position_distribution_loader.position_distributions)
-        print('Temporal Propensity Bias in data: ' + str(pos_bias_in_data))
+        print('Temporal propensity bias in data: ' + str(pos_bias_in_data))
         return position_distribution_loader.position_distributions
 
     def get_popularity_vector_dataloader(self, include_test=False, mode='test'):
