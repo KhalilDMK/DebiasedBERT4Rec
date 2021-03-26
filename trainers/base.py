@@ -1,6 +1,7 @@
 from loggers import *
 from config import STATE_DICT_KEY, OPTIMIZER_STATE_DICT_KEY
 from utils import AverageMeterSet
+from dataloaders.utils import position_bias_in_data
 
 import torch
 import torch.nn as nn
@@ -155,7 +156,7 @@ class AbstractTrainer(metaclass=ABCMeta):
             self.logger_service.log_val(log_data)
 
     def test(self):
-        print('Test best model with test set!')
+        print('Testing best model on test set...')
 
         best_model = torch.load(os.path.join(self.export_root, 'models', 'best_acc_model.pth')).get('model_state_dict')
         self.model.load_state_dict(best_model)
@@ -182,10 +183,10 @@ class AbstractTrainer(metaclass=ABCMeta):
                 description = description.format(*(average_meter_set[k].avg for k in description_metrics))
                 tqdm_dataloader.set_description(description)
 
-            average_metrics = average_meter_set.averages()
-            with open(os.path.join(self.export_root, 'logs', 'test_metrics_iter_' + str(self.args.iteration) + '.json'), 'w') as f:
-                json.dump(average_metrics, f, indent=4)
-            print(average_metrics)
+            self.average_metrics = average_meter_set.averages()
+            #with open(os.path.join(self.export_root, 'logs', 'test_metrics_iter_' + str(self.args.iteration) + '.json'), 'w') as f:
+            #    json.dump(self.average_metrics, f, indent=4)
+            print(self.average_metrics)
 
     def recommend(self):
         print('Generating recommendations for test sessions...')
@@ -227,15 +228,25 @@ class AbstractTrainer(metaclass=ABCMeta):
                     test_items = candidates[:, 0]
                 else:
                     test_items = torch.cat((test_items, candidates[:, 0]))
-        print('Average Training Positional Frequency of Recommendations: ' + str(
-            positional_frequency(recommendations.cpu().numpy(), recommendation_positions.cpu().numpy(),
-                                 position_distributions[:].cpu().numpy())))
-        print('Average Training Positional Frequency of Test items: ' + str(
-            positional_frequency(test_items.cpu().numpy(), recommendation_positions.cpu().numpy(),
-                                 position_distributions[:].cpu().numpy())))
-        print('Average Position Matching of Recommendations with Top 1 Training Positions: ' + str(
-            top_position_matching(recommendations.cpu().numpy(), recommendation_positions.cpu().numpy(),
-                                  position_distributions[:].cpu().numpy())))
+        temp_prop_rec = positional_frequency(recommendations.cpu().numpy(), recommendation_positions.cpu().numpy(),
+                                 position_distributions.cpu().numpy())
+        temp_prop_test = positional_frequency(test_items.cpu().numpy(), recommendation_positions.cpu().numpy(),
+                                 position_distributions.cpu().numpy())
+        model_temp_prop_bias = temp_prop_rec - temp_prop_test
+        data_temp_prop_bias = position_bias_in_data(position_distributions)
+        self.average_metrics['temp_prop_rec'] = float(temp_prop_rec)
+        self.average_metrics['temp_prop_test'] = float(temp_prop_test)
+        self.average_metrics['model_temp_prop_bias'] = float(model_temp_prop_bias)
+        self.average_metrics['data_temp_prop_bias'] = float(data_temp_prop_bias)
+        print('Average training positional frequency of recommendations: ' + str(temp_prop_rec))
+        print('Average training positional frequency of test items: ' + str(temp_prop_test))
+        print('Model temporal propensity bias: ' + str(model_temp_prop_bias))
+        #print('Average Position Matching of Recommendations with Top 1 Training Positions: ' + str(
+        #    top_position_matching(recommendations.cpu().numpy(), recommendation_positions.cpu().numpy(),
+        #                          position_distributions[:].cpu().numpy())))
+        with open(os.path.join(self.export_root, 'logs', 'test_metrics_iter_' + str(self.args.iteration) + '.json'),
+                  'w') as f:
+            json.dump(self.average_metrics, f, indent=4)
 
     def _create_optimizer(self):
         args = self.args
