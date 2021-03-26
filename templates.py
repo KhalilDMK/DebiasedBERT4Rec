@@ -48,7 +48,7 @@ def set_template(args):
         args.bert_num_heads = 4
 
     elif args.template.startswith('train_debiased_bert'):
-        args.mode = 'train'
+        args.mode = 'loop'
 
         #args.dataset_code = 'ml-' + input('Input 1 for ml-1m, 20 for ml-20m: ') + 'm'
         args.dataset_code = 'ml-1m'
@@ -79,7 +79,7 @@ def set_template(args):
         args.enable_lr_schedule = True
         args.decay_step = 25
         args.gamma = 1.0
-        args.num_epochs = 100 if args.dataset_code == 'ml-1m' else 200
+        args.num_epochs = 3 if args.dataset_code == 'ml-1m' else 200
         args.metric_ks = [1, 5, 10]
         args.best_metric = 'NDCG@10'
 
