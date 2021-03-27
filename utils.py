@@ -11,6 +11,7 @@ import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
 from torch import optim as optim
+import matplotlib.pyplot as plt
 
 
 def setup_train(args):
@@ -99,6 +100,40 @@ def create_optimizer(model, args):
         return optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
     return optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay, momentum=args.momentum)
+
+
+def plot_evolution(export_root, num_iterations):
+    create_plots_folder(export_root)
+    results = merge_results(export_root, num_iterations)
+    generate_plots(results, export_root, num_iterations)
+
+
+def create_plots_folder(export_root):
+    os.mkdir(Path(export_root).joinpath('plots'))
+
+
+def merge_results(export_root, num_iterations):
+    results = None
+    for i in range(num_iterations):
+        with open(Path(export_root).joinpath('logs', 'test_metrics_iter_' + str(i) + '.json')) as f:
+            if not results:
+                results = json.load(f)
+                results = {k:[v] for k, v in results.items()}
+            else:
+                intermediate = json.load(f)
+                results = {k:v + [intermediate[k]] for k, v in results.items()}
+    return results
+
+
+def generate_plots(results, export_root, num_iterations):
+    for metric in results:
+        plt.figure()
+        plt.plot(range(num_iterations), results[metric])
+        plt.title('Evolution of ' + str(metric) + ' wrt feedback loop iterations')
+        plt.xlabel('Iteration')
+        plt.ylabel(metric)
+        #plt.show()
+        plt.savefig(Path(export_root).joinpath('plots', metric + '.png'))
 
 
 class AverageMeterSet(object):

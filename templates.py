@@ -80,7 +80,7 @@ def set_template(args):
         args.decay_step = 25
         args.gamma = 1.0
         args.num_iterations = 5
-        args.num_epochs = 3 if args.dataset_code == 'ml-1m' else 200
+        args.num_epochs = 2 if args.dataset_code == 'ml-1m' else 200
         args.metric_ks = [1, 5, 10]
         args.best_metric = 'NDCG@10'
 
