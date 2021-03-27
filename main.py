@@ -28,7 +28,7 @@ def loop():
     for i in range(args.num_iterations):
         print('#' * 20 + '\nIteration ' + str(i) + '\n' + '#' * 20)
         train()
-
+    plot_evolution(export_root, args.num_iterations)
 
 if __name__ == '__main__':
     args.iteration = -1
