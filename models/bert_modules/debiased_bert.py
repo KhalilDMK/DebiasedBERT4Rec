@@ -5,6 +5,7 @@ from models.bert_modules.embedding import BERTEmbedding
 from models.bert_modules.transformer import TransformerBlock
 from models.bert_modules.debiased_transformer import DebiasedTransformerBlock
 from utils import fix_random_seed_as
+import sys
 
 
 class DebiasedBERT(nn.Module):
@@ -22,8 +23,13 @@ class DebiasedBERT(nn.Module):
         hidden = args.bert_hidden_units
         self.hidden = hidden
         dropout = args.bert_dropout
-        #self.pos_dist = 1 - torch.cat((pos_dist[:], torch.zeros(2, self.max_len)), 0)
-        self.pos_dist = torch.cat((pos_dist, torch.zeros(2, self.max_len)), 0)
+        #self.pos_dist = 1 - torch.cat((pos_dist, torch.zeros(1, self.max_len)), 0)
+        #print(pos_dist)
+        #print(pos_dist[0])
+        #print(pos_dist.shape)
+        #print(torch.cat((pos_dist, torch.zeros(1, self.max_len)), 0).shape)
+        self.pos_dist = torch.cat((pos_dist, torch.zeros(1, self.max_len)), 0)
+        #self.pos_dist = torch.cat((pos_dist, torch.zeros(1, self.max_len)), 0) + sys.float_info.epsilon
         self.device = args.device
 
         # embedding for BERT, sum of positional, segment, token embeddings
@@ -36,7 +42,11 @@ class DebiasedBERT(nn.Module):
     def forward(self, x):
 
         # temporal propensity encoding of input
+        #print(self.pos_dist.shape)
+        #print(x.shape)
+        #print([self.pos_dist[x[i].cpu(), range(x.shape[1])].view(-1, self.max_len) for i in range(x.shape[0])][0].shape)
         temp_prop_enc = torch.cat([self.pos_dist[x[i].cpu(), range(x.shape[1])].view(-1, self.max_len) for i in range(x.shape[0])], 0).to(self.device)
+        #print(temp_prop_enc.shape)
 
         mask = (x > 0).unsqueeze(1).repeat(1, x.size(1), 1).unsqueeze(1)
 

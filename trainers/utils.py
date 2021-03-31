@@ -65,7 +65,7 @@ def top_position_matching(recommendations, recommendation_positions, position_di
     return np.mean([position == top_train_positions[item] for (item, position) in zip(recommendations, recommendation_positions)])
 
 
-def recalls_and_ndcgs_for_ks(scores, labels, ks, popularity_vector, item_similarity_matrix):
+def metrics_for_ks(scores, labels, ks, popularity_vector, item_similarity_matrix):
     metrics = {}
 
     scores = scores

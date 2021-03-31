@@ -1,7 +1,7 @@
 from loggers import *
 from config import STATE_DICT_KEY, OPTIMIZER_STATE_DICT_KEY
 from utils import AverageMeterSet
-from dataloaders.utils import position_bias_in_data
+from dataloaders.utils import position_bias_in_data, propensity_bias_in_data
 
 import torch
 import torch.nn as nn
@@ -17,7 +17,7 @@ import pickle
 
 
 class AbstractTrainer(metaclass=ABCMeta):
-    def __init__(self, args, model, train_loader, val_loader, test_loader, export_root, train_popularity_vector_loader, val_popularity_vector_loader, test_popularity_vector_loader):
+    def __init__(self, args, model, train_loader, val_loader, test_loader, export_root, pos_dist, train_popularity_vector_loader, val_popularity_vector_loader, test_popularity_vector_loader):
         self.args = args
         self.device = args.device
         self.model = model.to(self.device)
@@ -42,11 +42,15 @@ class AbstractTrainer(metaclass=ABCMeta):
         self.logger_service = LoggerService(self.train_loggers, self.val_loggers)
         self.log_period_as_iter = args.log_period_as_iter
 
-        self.train_popularity_vector = train_popularity_vector_loader.popularity_vector
+        self.max_len = args.bert_max_len
+        self.pos_dist = pos_dist.to(self.device)
+        self.pos_dist = torch.cat((torch.zeros(1, self.max_len).to(self.device), self.pos_dist), 0)
+        self.train_popularity_vector = train_popularity_vector_loader.popularity_vector.to(self.device)
+        self.train_popularity_vector = torch.cat((torch.FloatTensor([0]).to(self.device), self.train_popularity_vector))
         self.train_item_similarity_matrix = train_popularity_vector_loader.item_similarity_matrix
-        self.val_popularity_vector = val_popularity_vector_loader.popularity_vector
+        self.val_popularity_vector = val_popularity_vector_loader.popularity_vector.to(self.device)
         self.val_item_similarity_matrix = val_popularity_vector_loader.item_similarity_matrix
-        self.test_popularity_vector = test_popularity_vector_loader.popularity_vector
+        self.test_popularity_vector = test_popularity_vector_loader.popularity_vector.to(self.device)
         self.test_item_similarity_matrix = test_popularity_vector_loader.item_similarity_matrix
 
     @abstractmethod
@@ -98,7 +102,7 @@ class AbstractTrainer(metaclass=ABCMeta):
             batch = [x.to(self.device) for x in batch]
 
             self.optimizer.zero_grad()
-            loss = self.calculate_loss(batch)
+            loss = self.calculate_loss(batch, self.args.model_code)
             loss.backward()
 
             self.optimizer.step()
@@ -216,7 +220,7 @@ class AbstractTrainer(metaclass=ABCMeta):
         print('recommendation positions: ' + str(recommendation_positions))
         return recommendations.to(self.device), recommendation_positions.to(self.device)
 
-    def eval_position_bias(self, recommendations, recommendation_positions, position_distributions):
+    def eval_position_bias(self, recommendations, recommendation_positions):
         print('Position Bias Evaluation...')
         test_items = None
         with torch.no_grad():
@@ -229,15 +233,17 @@ class AbstractTrainer(metaclass=ABCMeta):
                 else:
                     test_items = torch.cat((test_items, candidates[:, 0]))
         temp_prop_rec = positional_frequency(recommendations.cpu().numpy(), recommendation_positions.cpu().numpy(),
-                                 position_distributions.cpu().numpy())
+                                 self.pos_dist.cpu().numpy())
         temp_prop_test = positional_frequency(test_items.cpu().numpy(), recommendation_positions.cpu().numpy(),
-                                 position_distributions.cpu().numpy())
+                                 self.pos_dist.cpu().numpy())
         model_temp_prop_bias = temp_prop_rec - temp_prop_test
-        data_temp_prop_bias = position_bias_in_data(position_distributions)
+        data_temp_prop_bias = position_bias_in_data(self.pos_dist)
+        data_stat_prop_bias = propensity_bias_in_data(self.train_popularity_vector)
         self.average_metrics['temp_prop_rec'] = float(temp_prop_rec)
         self.average_metrics['temp_prop_test'] = float(temp_prop_test)
         self.average_metrics['model_temp_prop_bias'] = float(model_temp_prop_bias)
         self.average_metrics['data_temp_prop_bias'] = float(data_temp_prop_bias)
+        self.average_metrics['data_stat_prop_bias'] = float(data_stat_prop_bias)
         print('Average training positional frequency of recommendations: ' + str(temp_prop_rec))
         print('Average training positional frequency of test items: ' + str(temp_prop_test))
         print('Model temporal propensity bias: ' + str(model_temp_prop_bias))

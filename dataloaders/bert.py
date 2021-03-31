@@ -1,6 +1,6 @@
 from .base import AbstractDataloader
 from .negative_samplers import negative_sampler_factory
-from .utils import position_bias_in_data
+from .utils import position_bias_in_data, propensity_bias_in_data
 
 import torch
 import torch.utils.data as data_utils
@@ -46,8 +46,8 @@ class BertDataloader(AbstractDataloader):
 
     def get_train_position_distributions_dataloader(self):
         position_distribution_loader = BertPositionDistribution(self.train, self.max_len, self.args.num_items)
-        pos_bias_in_data = position_bias_in_data(position_distribution_loader.position_distributions)
-        print('Temporal propensity bias in data: ' + str(pos_bias_in_data))
+        #pos_bias_in_data = position_bias_in_data(position_distribution_loader.position_distributions)
+        #print('Temporal propensity bias in data: ' + str(pos_bias_in_data))
         return position_distribution_loader.position_distributions
 
     def get_popularity_vector_dataloader(self, include_test=False, mode='test'):
@@ -57,6 +57,9 @@ class BertDataloader(AbstractDataloader):
         else:
             print('Generating train popularity vector...')
         popularity_vector_loader = BertPopularityVector(self.train, answers, self.user_count, self.item_count, self.max_len, include_test)
+        #if not include_test:
+        #    prop_bias_in_data = propensity_bias_in_data(popularity_vector_loader.popularity_vector)
+        #    print('Propensity bias in data: ' + str(prop_bias_in_data))
         return popularity_vector_loader
 
     def _get_train_loader(self):
@@ -186,10 +189,12 @@ class BertPositionDistribution(data_utils.Dataset):
         self.u2seq = [x[-self.max_len:] for x in self.u2seq.values()]
         self.seq = np.zeros([len(self.u2seq), len(max(self.u2seq, key=lambda x: len(x)))])
         for i, j in enumerate(self.u2seq):
-            self.seq[i][0:len(j)] = j
+            #self.seq[i][0:len(j)] = j
+            self.seq[i][-len(j)::] = j
         occurrences = [Counter(self.seq[:, j]) for j in range(self.max_len)]
         item_index = pd.Index(range(self.num_items + 1))
-        occurrences = pd.DataFrame(occurrences).transpose().reindex(item_index).sort_index().fillna(0).values
+        occurrences = pd.DataFrame(occurrences).transpose().reindex(item_index).sort_index().fillna(0).values[1::]
+        #occurrences = np.concatenate((np.zeros((1, self.max_len)), occurrences), axis=0)
         softmax = torch.nn.Softmax()
         self.position_distributions = softmax(torch.Tensor(occurrences))
 
@@ -207,7 +212,8 @@ class BertPopularityVector(data_utils.Dataset):
         self.u2seq = [x[-max_len:] for x in self.u2seq.values()]
         self.seq = np.zeros([len(self.u2seq), len(max(self.u2seq, key=lambda x: len(x)))])
         for i, j in enumerate(self.u2seq):
-            self.seq[i][0:len(j)] = j
+            #self.seq[i][0:len(j)] = j
+            self.seq[i][-len(j)::] = j
         self.seq = {i: list(self.seq[i]) for i in range(len(self.seq))}
         if include_test:
             self.seq = {k:self.seq[k] + self.u2answer[k] for k in self.seq}
@@ -216,17 +222,22 @@ class BertPopularityVector(data_utils.Dataset):
         self.interaction_matrix = pd.crosstab(users, items)
         del self.interaction_matrix[0]
         missing_columns = list(set(range(1, item_count + 1)) - set(list(self.interaction_matrix)))
+        #missing_columns = list(set(range(item_count + 1)) - set(list(self.interaction_matrix)))
         missing_rows = list(set(range(user_count)) - set(self.interaction_matrix.index))
         for missing_column in missing_columns:
             self.interaction_matrix[missing_column] = [0] * len(self.interaction_matrix)
         for missing_row in missing_rows:
             self.interaction_matrix.loc[missing_row] = [0] * item_count
+            #self.interaction_matrix.loc[missing_row] = [0] * (item_count + 1)
         self.interaction_matrix = np.array(self.interaction_matrix[list(range(1, item_count + 1))].sort_index())
+        #self.interaction_matrix = np.array(self.interaction_matrix[list(range(item_count + 1))].sort_index())
         self.popularity_vector = np.sum(self.interaction_matrix, axis=0)
         self.popularity_vector = (self.popularity_vector / max(self.popularity_vector)) ** 0.5
+        softmax = torch.nn.Softmax()
+        self.popularity_vector = softmax(torch.Tensor(self.popularity_vector))
         self.item_similarity_matrix = cosine_similarity(self.interaction_matrix.T)
         np.fill_diagonal(self.item_similarity_matrix, 0)
-        self.popularity_vector = torch.Tensor(self.popularity_vector)
+        #self.popularity_vector = torch.Tensor(self.popularity_vector)
         self.item_similarity_matrix = torch.Tensor(self.item_similarity_matrix)
 
     def __len__(self):

@@ -1,5 +1,5 @@
 from .base import AbstractTrainer
-from .utils import recalls_and_ndcgs_for_ks
+from .utils import metrics_for_ks
 
 import torch
 import torch.nn as nn
