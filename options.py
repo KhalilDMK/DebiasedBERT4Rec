@@ -97,6 +97,7 @@ parser.add_argument('--bert_num_blocks', type=int, default=None, help='Number of
 parser.add_argument('--bert_num_heads', type=int, default=None, help='Number of heads for multi-attention')
 parser.add_argument('--bert_dropout', type=float, default=None, help='Dropout probability to use throughout the model')
 parser.add_argument('--bert_mask_prob', type=float, default=None, help='Probability for masking items in the training sequence')
+parser.add_argument('--debiasing', type=str, default=None, choices=[None, 'static', 'temporal', 'exposure'])
 # DAE #
 parser.add_argument('--dae_num_items', type=int, default=None, help='Number of total items')
 parser.add_argument('--dae_num_hidden', type=int, default=0, help='Number of hidden layers in DAE')

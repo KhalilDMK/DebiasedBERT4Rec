@@ -10,6 +10,6 @@ TRAINERS = {
 }
 
 
-def trainer_factory(args, model, train_loader, val_loader, test_loader, export_root, train_popularity_vector_loader, val_popularity_vector_loader, test_popularity_vector_loader):
+def trainer_factory(args, model, train_loader, val_loader, test_loader, export_root, pos_dist, train_popularity_vector_loader, val_popularity_vector_loader, test_popularity_vector_loader):
     trainer = TRAINERS[args.trainer_code]
-    return trainer(args, model, train_loader, val_loader, test_loader, export_root, train_popularity_vector_loader, val_popularity_vector_loader, test_popularity_vector_loader)
+    return trainer(args, model, train_loader, val_loader, test_loader, export_root, pos_dist, train_popularity_vector_loader, val_popularity_vector_loader, test_popularity_vector_loader)

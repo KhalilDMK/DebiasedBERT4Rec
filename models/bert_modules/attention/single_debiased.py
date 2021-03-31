@@ -16,7 +16,10 @@ class DebiasedAttention(nn.Module):
 
         # Apply temporal propensity encoding
         temp_prop_enc = temp_prop_enc.repeat(1, scores.shape[1] * scores.shape[2]).view(scores.shape)
-        scores = scores * temp_prop_enc * torch.transpose(temp_prop_enc, 2, 3)
+        #scores = scores * temp_prop_enc * torch.transpose(temp_prop_enc, 2, 3)
+        #scores = scores * temp_prop_enc
+        #scores = torch.div(scores, temp_prop_enc)
+        #scores -= 0.1 * temp_prop_enc
 
         if mask is not None:
             scores = scores.masked_fill(mask == 0, -1e9)

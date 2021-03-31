@@ -11,7 +11,7 @@ def train():
     args.iteration += 1
     train_loader, val_loader, test_loader, position_distributions, train_popularity_vector_loader, val_popularity_vector_loader, test_popularity_vector_loader = dataloader_factory(args, export_root)
     model = model_factory(args, position_distributions)
-    trainer = trainer_factory(args, model, train_loader, val_loader, test_loader, export_root, train_popularity_vector_loader, val_popularity_vector_loader, test_popularity_vector_loader)
+    trainer = trainer_factory(args, model, train_loader, val_loader, test_loader, export_root, position_distributions, train_popularity_vector_loader, val_popularity_vector_loader, test_popularity_vector_loader)
     trainer.train()
 
     #test_model = (input('Test model with test dataset? y/[n]: ') == 'y')
@@ -21,7 +21,7 @@ def train():
     #generate_recommendations = (input('Generate recommendations? y/[n]: ') == 'y')
     #if generate_recommendations:
     recommendations, recommendation_positions = trainer.recommend()
-    trainer.eval_position_bias(recommendations, recommendation_positions, position_distributions)
+    trainer.eval_position_bias(recommendations, recommendation_positions)
 
 
 def loop():
