@@ -14,6 +14,7 @@ from abc import *
 from pathlib import Path
 from trainers.utils import positional_frequency, top_position_matching
 import pickle
+import random
 
 
 class AbstractTrainer(metaclass=ABCMeta):
@@ -199,6 +200,7 @@ class AbstractTrainer(metaclass=ABCMeta):
         self.model.eval()
         recommendations = None
         recommendation_positions = None
+        softmax = nn.Softmax(dim=1)
         with torch.no_grad():
             tqdm_dataloader = tqdm(self.test_loader)
             for batch_idx, batch in enumerate(tqdm_dataloader):
@@ -206,8 +208,12 @@ class AbstractTrainer(metaclass=ABCMeta):
                 seqs, candidates, labels = batch
                 scores = self.model(seqs)  # B x T x V
                 scores = scores[:, -1, :]  # B x V
-                softmax = nn.Softmax(dim=1)
-                batch_recommendations = torch.argmax(softmax(scores), dim=1)
+                num_items = scores.shape[1]
+                train_batch_indices, train_item_indices = self.get_indices_to_ignore(seqs, num_items)
+                scores = softmax(scores)
+                scores[train_batch_indices, train_item_indices] = float('-inf')
+                #batch_recommendations = torch.argmax(scores, dim=1)
+                batch_recommendations = self.generate_batch_recommendations(seqs, scores)
                 if recommendations == None:
                     recommendations = batch_recommendations
                     recommendation_positions = torch.Tensor([len([i for i in x if i != 0]) - 1 for x in seqs])
@@ -291,3 +297,18 @@ class AbstractTrainer(metaclass=ABCMeta):
 
     def _needs_to_log(self, accum_iter):
         return accum_iter % self.log_period_as_iter < self.args.train_batch_size and accum_iter != 0
+
+    def get_indices_to_ignore(self, seqs, num_items):
+        train_batch_indices = torch.cat([torch.Tensor([i] * self.max_len) for i in range(seqs.shape[0])]).tolist()
+        train_item_indices = seqs.flatten().tolist()
+        train_batch_indices = [int(x) for x in train_batch_indices]
+        train_item_indices = [0 if x == num_items else int(x) for x in train_item_indices]
+        return train_batch_indices, train_item_indices
+
+    def generate_batch_recommendations(self, seqs, scores):
+        batch_recommendations = torch.topk(scores, k=self.args.top_k_recom, dim=1)
+        batch_recommendations = batch_recommendations[1]
+        batch_indices = range(seqs.shape[0])
+        item_random_indices = random.choices(range(self.args.top_k_recom), k=seqs.shape[0])
+        batch_recommendations = batch_recommendations[batch_indices, item_random_indices]
+        return batch_recommendations

@@ -78,6 +78,10 @@ parser.add_argument('--log_period_as_iter', type=int, default=12800)
 # evaluation #
 parser.add_argument('--metric_ks', nargs='+', type=int, default=[10, 20, 50], help='ks for Metric@k')
 parser.add_argument('--best_metric', type=str, default='NDCG@10', help='Metric for determining the best model')
+# recommendation #
+parser.add_argument('--top_k_recom', type=int, default=10, help='Number of recommended items at each iterations '
+                                                                  'from which the user is assumed to randomly select '
+                                                                  'one.')
 # Finding optimal beta for VAE #
 parser.add_argument('--find_best_beta', type=bool, default=False, 
                     help='If set True, the trainer will anneal beta all the way up to 1.0 and find the best beta')
