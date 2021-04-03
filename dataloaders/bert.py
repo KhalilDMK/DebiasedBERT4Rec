@@ -196,7 +196,9 @@ class BertPositionDistribution(data_utils.Dataset):
         occurrences = pd.DataFrame(occurrences).transpose().reindex(item_index).sort_index().fillna(0).values[1::]
         #occurrences = np.concatenate((np.zeros((1, self.max_len)), occurrences), axis=0)
         softmax = torch.nn.Softmax()
-        self.position_distributions = softmax(torch.Tensor(occurrences))
+        occurrences = torch.Tensor(occurrences)
+        self.position_distributions = torch.pow(occurrences / torch.max(occurrences, dim=0)[0], 0.5)
+        self.position_distributions = softmax(self.position_distributions)
 
     def __len__(self):
         return len(self.items)

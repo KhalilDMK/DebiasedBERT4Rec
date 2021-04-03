@@ -27,6 +27,7 @@ def train():
 def loop():
     for i in range(args.num_iterations):
         print('#' * 20 + '\nIteration ' + str(i) + '\n' + '#' * 20)
+        torch.cuda.empty_cache()
         train()
     plot_evolution(export_root, args.num_iterations)
 
