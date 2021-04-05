@@ -197,8 +197,11 @@ class BertPositionDistribution(data_utils.Dataset):
         #occurrences = np.concatenate((np.zeros((1, self.max_len)), occurrences), axis=0)
         softmax = torch.nn.Softmax()
         occurrences = torch.Tensor(occurrences)
-        self.position_distributions = torch.pow(occurrences / torch.max(occurrences, dim=0)[0], 0.5)
-        self.position_distributions = softmax(self.position_distributions)
+        #self.position_distributions = torch.pow(occurrences / torch.max(occurrences, dim=0)[0], 0.5)
+        #self.position_distributions = occurrences / torch.max(occurrences, dim=0)[0]
+        self.position_distributions = occurrences / torch.max(occurrences)
+        self.position_distributions = softmax(self.position_distributions.flatten()).view_as(self.position_distributions)
+        #self.position_distributions = softmax(self.position_distributions)
 
     def __len__(self):
         return len(self.items)
@@ -234,9 +237,11 @@ class BertPopularityVector(data_utils.Dataset):
         self.interaction_matrix = np.array(self.interaction_matrix[list(range(1, item_count + 1))].sort_index())
         #self.interaction_matrix = np.array(self.interaction_matrix[list(range(item_count + 1))].sort_index())
         self.popularity_vector = np.sum(self.interaction_matrix, axis=0)
-        self.popularity_vector = (self.popularity_vector / max(self.popularity_vector)) ** 0.5
+        #self.popularity_vector = (self.popularity_vector / max(self.popularity_vector)) ** 0.5
         softmax = torch.nn.Softmax()
-        self.popularity_vector = softmax(torch.Tensor(self.popularity_vector))
+        #self.popularity_vector = softmax(torch.Tensor(self.popularity_vector))
+        self.popularity_vector = torch.Tensor(self.popularity_vector / max(self.popularity_vector))
+        self.popularity_vector = softmax(self.popularity_vector)
         self.item_similarity_matrix = cosine_similarity(self.interaction_matrix.T)
         np.fill_diagonal(self.item_similarity_matrix, 0)
         #self.popularity_vector = torch.Tensor(self.popularity_vector)

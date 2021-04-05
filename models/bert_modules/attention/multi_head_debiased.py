@@ -21,7 +21,7 @@ class DebiasedMultiHeadedAttention(nn.Module):
 
         self.dropout = nn.Dropout(p=dropout)
 
-    def forward(self, query, key, value, temp_prop_enc, mask=None):
+    def forward(self, query, key, value, temp_prop_enc, stat_prop_enc, att_debiasing, mask=None):
         batch_size = query.size(0)
 
         # 1) Do all the linear projections in batch from d_model => h x d_k
@@ -29,7 +29,7 @@ class DebiasedMultiHeadedAttention(nn.Module):
                              for l, x in zip(self.linear_layers, (query, key, value))]
 
         # 2) Apply debiased attention on all the projected vectors in batch.
-        x, attn = self.debiased_attention(query, key, value, temp_prop_enc, mask=mask, dropout=self.dropout)
+        x, attn = self.debiased_attention(query, key, value, temp_prop_enc, stat_prop_enc, att_debiasing, mask=mask, dropout=self.dropout)
 
         # 3) "Concat" using a view and apply a final linear.
         x = x.transpose(1, 2).contiguous().view(batch_size, -1, self.h * self.d_k)

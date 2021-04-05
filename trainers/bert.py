@@ -30,19 +30,22 @@ class BERTTrainer(AbstractTrainer):
         seqs, labels = batch
         #temp_prop_enc = torch.cat(
         #    [self.pos_dist[seqs[i].cpu(), range(seqs.shape[1])].view(-1, self.max_len) for i in range(seqs.shape[0])], 0)
-        temp_prop_enc = torch.cat(
-            [self.pos_dist[labels[i].cpu(), range(labels.shape[1])].view(-1, self.max_len) for i in range(labels.shape[0])],
-            0)
-        temp_prop_enc = temp_prop_enc.flatten() + sys.float_info.epsilon
+        #temp_prop_enc = torch.cat(
+        #    [self.pos_dist[labels[i].cpu(), range(labels.shape[1])].view(-1, self.max_len) for i in range(labels.shape[0])],
+        #    0)
+        temp_prop_enc = self.pos_dist[labels.flatten().cpu(), list(range(labels.shape[1])) * labels.shape[0]].view(-1, self.max_len)
+        temp_prop_enc = temp_prop_enc.flatten()
         logits = self.model(seqs)  # B x T x V
         logits = logits.view(-1, logits.size(-1))  # (B*T) x V
         labels = labels.view(-1)  # B*T
-        stat_prop_enc = self.train_popularity_vector[labels] + sys.float_info.epsilon
+        stat_prop_enc = self.train_popularity_vector[labels]
         #loss = self.ce(logits, labels)
         logits = self.log_softmax(logits)
-        if self.args.debiasing in ['temporal', 'exposure']:
+        if self.args.loss_debiasing in ['temporal', 'exposure']:
+            print('loss_temporal')
             logits = torch.div(logits, temp_prop_enc.unsqueeze(1))
-        if self.args.debiasing in ['static', 'exposure']:
+        if self.args.loss_debiasing in ['static', 'exposure']:
+            print('loss_static')
             logits = torch.div(logits, stat_prop_enc.unsqueeze(1))
         loss = self.nll(logits, labels)
 

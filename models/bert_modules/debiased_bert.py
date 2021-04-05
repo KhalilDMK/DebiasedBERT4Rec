@@ -9,7 +9,7 @@ import sys
 
 
 class DebiasedBERT(nn.Module):
-    def __init__(self, args, pos_dist):
+    def __init__(self, args, pos_dist, train_popularity_vector_loader):
         super().__init__()
 
         fix_random_seed_as(args.model_init_seed)
@@ -28,9 +28,14 @@ class DebiasedBERT(nn.Module):
         #print(pos_dist[0])
         #print(pos_dist.shape)
         #print(torch.cat((pos_dist, torch.zeros(1, self.max_len)), 0).shape)
-        self.pos_dist = torch.cat((pos_dist, torch.zeros(1, self.max_len)), 0)
+        #self.pos_dist = torch.cat((pos_dist, torch.zeros(1, self.max_len)), 0)
         #self.pos_dist = torch.cat((pos_dist, torch.zeros(1, self.max_len)), 0) + sys.float_info.epsilon
         self.device = args.device
+        self.pos_dist = pos_dist.to(self.device)
+        self.pos_dist = torch.cat((torch.zeros(1, self.max_len).to(self.device), self.pos_dist, torch.zeros(1, self.max_len).to(self.device)), 0) + sys.float_info.epsilon
+        self.train_popularity_vector = train_popularity_vector_loader.popularity_vector.to(self.device)
+        self.train_popularity_vector = torch.cat((torch.FloatTensor([0]).to(self.device), self.train_popularity_vector, torch.FloatTensor([0]).to(self.device))) + sys.float_info.epsilon
+        self.att_debiasing = args.att_debiasing
 
         # embedding for BERT, sum of positional, segment, token embeddings
         self.embedding = BERTEmbedding(vocab_size=vocab_size, embed_size=self.hidden, max_len=self.max_len, dropout=dropout)
@@ -45,7 +50,9 @@ class DebiasedBERT(nn.Module):
         #print(self.pos_dist.shape)
         #print(x.shape)
         #print([self.pos_dist[x[i].cpu(), range(x.shape[1])].view(-1, self.max_len) for i in range(x.shape[0])][0].shape)
-        temp_prop_enc = torch.cat([self.pos_dist[x[i].cpu(), range(x.shape[1])].view(-1, self.max_len) for i in range(x.shape[0])], 0).to(self.device)
+        #temp_prop_enc = torch.cat([self.pos_dist[x[i].cpu(), range(x.shape[1])].view(-1, self.max_len) for i in range(x.shape[0])], 0)
+        temp_prop_enc = self.pos_dist[x.flatten().cpu(), list(range(x.shape[1])) * x.shape[0]].view(-1, self.max_len)
+        stat_prop_enc = self.train_popularity_vector[x.flatten()].view_as(x) + sys.float_info.epsilon
         #print(temp_prop_enc.shape)
 
         mask = (x > 0).unsqueeze(1).repeat(1, x.size(1), 1).unsqueeze(1)
@@ -57,7 +64,7 @@ class DebiasedBERT(nn.Module):
         block = 0
         for transformer in self.transformer_blocks:
             if block == 0:
-                x = transformer.forward(x, mask, temp_prop_enc)
+                x = transformer.forward(x, mask, temp_prop_enc, stat_prop_enc, self.att_debiasing)
             else:
                 x = transformer.forward(x, mask)
             block += 1

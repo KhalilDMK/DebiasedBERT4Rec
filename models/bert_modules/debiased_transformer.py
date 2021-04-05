@@ -25,7 +25,7 @@ class DebiasedTransformerBlock(nn.Module):
         self.output_sublayer = SublayerConnection(size=hidden, dropout=dropout)
         self.dropout = nn.Dropout(p=dropout)
 
-    def forward(self, x, mask, temp_prop_enc):
-        x = self.input_sublayer(x, lambda _x: self.debiased_attention.forward(_x, _x, _x, temp_prop_enc, mask=mask))
+    def forward(self, x, mask, temp_prop_enc, stat_prop_enc, att_debiasing):
+        x = self.input_sublayer(x, lambda _x: self.debiased_attention.forward(_x, _x, _x, temp_prop_enc, stat_prop_enc, att_debiasing, mask=mask))
         x = self.output_sublayer(x, self.feed_forward)
         return self.dropout(x)

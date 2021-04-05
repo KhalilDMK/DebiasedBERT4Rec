@@ -10,7 +10,7 @@ from utils import *
 def train():
     args.iteration += 1
     train_loader, val_loader, test_loader, position_distributions, train_popularity_vector_loader, val_popularity_vector_loader, test_popularity_vector_loader = dataloader_factory(args, export_root)
-    model = model_factory(args, position_distributions)
+    model = model_factory(args, position_distributions, train_popularity_vector_loader)
     trainer = trainer_factory(args, model, train_loader, val_loader, test_loader, export_root, position_distributions, train_popularity_vector_loader, val_popularity_vector_loader, test_popularity_vector_loader)
     trainer.train()
 
