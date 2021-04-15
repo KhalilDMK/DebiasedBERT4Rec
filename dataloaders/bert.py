@@ -114,14 +114,17 @@ class BertTrainDataset(data_utils.Dataset):
         for s in seq:
             prob = self.rng.random()
             if prob < self.mask_prob:
-                prob /= self.mask_prob
 
-                if prob < 0.8:
-                    tokens.append(self.mask_token)
+                tokens.append(self.mask_token)
+
+                #prob /= self.mask_prob
+
+                #if prob < 0.8:
+                #    tokens.append(self.mask_token)
                 #elif prob < 0.9:
                 #    tokens.append(self.rng.randint(1, self.num_items))
-                else:
-                    tokens.append(s)
+                #else:
+                #    tokens.append(s)
 
                 labels.append(s)
             else:
@@ -199,8 +202,9 @@ class BertPositionDistribution(data_utils.Dataset):
         occurrences = torch.Tensor(occurrences)
         #self.position_distributions = torch.pow(occurrences / torch.max(occurrences, dim=0)[0], 0.5)
         #self.position_distributions = occurrences / torch.max(occurrences, dim=0)[0]
-        self.position_distributions = occurrences / torch.max(occurrences)
-        self.position_distributions = softmax(self.position_distributions.flatten()).view_as(self.position_distributions)
+        self.position_distributions = occurrences / torch.sum(occurrences)
+        #self.position_distributions = torch.pow(occurrences / torch.max(occurrences), 0.5)
+        #self.position_distributions = softmax(self.position_distributions.flatten()).view_as(self.position_distributions)
         #self.position_distributions = softmax(self.position_distributions)
 
     def __len__(self):
@@ -240,8 +244,9 @@ class BertPopularityVector(data_utils.Dataset):
         #self.popularity_vector = (self.popularity_vector / max(self.popularity_vector)) ** 0.5
         softmax = torch.nn.Softmax()
         #self.popularity_vector = softmax(torch.Tensor(self.popularity_vector))
-        self.popularity_vector = torch.Tensor(self.popularity_vector / max(self.popularity_vector))
-        self.popularity_vector = softmax(self.popularity_vector)
+        self.popularity_vector = torch.Tensor(self.popularity_vector / sum(self.popularity_vector))
+        #self.popularity_vector = torch.Tensor((self.popularity_vector / max(self.popularity_vector)) ** 0.5)
+        #self.popularity_vector = softmax(self.popularity_vector)
         self.item_similarity_matrix = cosine_similarity(self.interaction_matrix.T)
         np.fill_diagonal(self.item_similarity_matrix, 0)
         #self.popularity_vector = torch.Tensor(self.popularity_vector)

@@ -42,11 +42,9 @@ class BERTTrainer(AbstractTrainer):
         #loss = self.ce(logits, labels)
         logits = self.log_softmax(logits)
         if self.args.loss_debiasing in ['temporal', 'exposure']:
-            print('loss_temporal')
-            logits = torch.div(logits, temp_prop_enc.unsqueeze(1))
+            logits = torch.div(logits, torch.pow(temp_prop_enc.unsqueeze(1), 0.1))
         if self.args.loss_debiasing in ['static', 'exposure']:
-            print('loss_static')
-            logits = torch.div(logits, stat_prop_enc.unsqueeze(1))
+            logits = torch.div(logits, torch.pow(stat_prop_enc.unsqueeze(1), 0.1))
         loss = self.nll(logits, labels)
 
         return loss
@@ -57,5 +55,5 @@ class BERTTrainer(AbstractTrainer):
         scores = scores[:, -1, :]  # B x V
         scores = scores.gather(1, candidates)  # B x C
 
-        metrics = metrics_for_ks(scores, labels, self.metric_ks, popularity_vector, item_similarity_matrix)
+        metrics = metrics_for_ks(scores, labels, candidates, self.metric_ks, popularity_vector, item_similarity_matrix)
         return metrics

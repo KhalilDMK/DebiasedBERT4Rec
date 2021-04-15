@@ -21,11 +21,9 @@ class DebiasedAttention(nn.Module):
         #scores = scores * temp_prop_enc * torch.transpose(temp_prop_enc, 2, 3)
         #scores = scores * temp_prop_enc
         if att_debiasing == 'temporal':
-            print('att_temporal')
-            scores = torch.div(scores, temp_prop_enc)
+            scores = torch.div(scores, torch.pow(temp_prop_enc, 0.1))
         if att_debiasing == 'static':
-            print('att_static')
-            scores = torch.div(scores, stat_prop_enc)
+            scores = torch.div(scores, torch.pow(stat_prop_enc, 0.1))
         #scores -= 0.1 * temp_prop_enc
 
         if mask is not None:
