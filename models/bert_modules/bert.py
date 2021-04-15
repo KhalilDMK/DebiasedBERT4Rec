@@ -7,7 +7,7 @@ from utils import fix_random_seed_as
 
 
 class BERT(nn.Module):
-    def __init__(self, args, pos_dist):
+    def __init__(self, args, pos_dist, train_popularity_vector_loader):
         super().__init__()
 
         fix_random_seed_as(args.model_init_seed)

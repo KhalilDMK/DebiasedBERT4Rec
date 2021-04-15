@@ -11,6 +11,6 @@ MODELS = {
 }
 
 
-def model_factory(args, pos_dist):
+def model_factory(args, pos_dist, train_popularity_vector_loader):
     model = MODELS[args.model_code]
-    return model(args, pos_dist)
+    return model(args, pos_dist, train_popularity_vector_loader)

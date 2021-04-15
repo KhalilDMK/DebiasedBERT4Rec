@@ -1,7 +1,7 @@
 from loggers import *
 from config import STATE_DICT_KEY, OPTIMIZER_STATE_DICT_KEY
 from utils import AverageMeterSet
-from dataloaders.utils import position_bias_in_data, propensity_bias_in_data
+from dataloaders.utils import *
 
 import torch
 import torch.nn as nn
@@ -15,6 +15,7 @@ from pathlib import Path
 from trainers.utils import positional_frequency, top_position_matching
 import pickle
 import random
+import sys
 
 
 class AbstractTrainer(metaclass=ABCMeta):
@@ -45,14 +46,28 @@ class AbstractTrainer(metaclass=ABCMeta):
 
         self.max_len = args.bert_max_len
         self.pos_dist = pos_dist.to(self.device)
-        self.pos_dist = torch.cat((torch.zeros(1, self.max_len).to(self.device), self.pos_dist), 0)
+        self.pos_dist = torch.cat((torch.zeros(1, self.max_len).to(self.device), self.pos_dist), 0) + sys.float_info.epsilon
         self.train_popularity_vector = train_popularity_vector_loader.popularity_vector.to(self.device)
-        self.train_popularity_vector = torch.cat((torch.FloatTensor([0]).to(self.device), self.train_popularity_vector))
-        self.train_item_similarity_matrix = train_popularity_vector_loader.item_similarity_matrix
+        self.train_popularity_vector = torch.cat((torch.FloatTensor([0]).to(self.device), self.train_popularity_vector)) + sys.float_info.epsilon
+        self.train_item_similarity_matrix = train_popularity_vector_loader.item_similarity_matrix.to(self.device)
+        self.train_item_similarity_matrix = torch.cat((torch.zeros(1, self.train_item_similarity_matrix.shape[1]).to(self.device), self.train_item_similarity_matrix), 0)
+        self.train_item_similarity_matrix = torch.cat((torch.zeros(self.train_item_similarity_matrix.shape[0], 1).to(self.device), self.train_item_similarity_matrix), 1)
         self.val_popularity_vector = val_popularity_vector_loader.popularity_vector.to(self.device)
-        self.val_item_similarity_matrix = val_popularity_vector_loader.item_similarity_matrix
+        self.val_popularity_vector = torch.cat(
+            (torch.FloatTensor([0]).to(self.device), self.val_popularity_vector)) + sys.float_info.epsilon
+        self.val_item_similarity_matrix = val_popularity_vector_loader.item_similarity_matrix.to(self.device)
+        self.val_item_similarity_matrix = torch.cat((torch.zeros(1, self.val_item_similarity_matrix.shape[1]).to(
+            self.device), self.val_item_similarity_matrix), 0)
+        self.val_item_similarity_matrix = torch.cat((torch.zeros(self.val_item_similarity_matrix.shape[0], 1).to(
+            self.device), self.val_item_similarity_matrix), 1)
         self.test_popularity_vector = test_popularity_vector_loader.popularity_vector.to(self.device)
-        self.test_item_similarity_matrix = test_popularity_vector_loader.item_similarity_matrix
+        self.test_popularity_vector = torch.cat(
+            (torch.FloatTensor([0]).to(self.device), self.test_popularity_vector)) + sys.float_info.epsilon
+        self.test_item_similarity_matrix = test_popularity_vector_loader.item_similarity_matrix.to(self.device)
+        self.test_item_similarity_matrix = torch.cat((torch.zeros(1, self.test_item_similarity_matrix.shape[1]).to(
+            self.device), self.test_item_similarity_matrix), 0)
+        self.test_item_similarity_matrix = torch.cat((torch.zeros(self.test_item_similarity_matrix.shape[0], 1).to(
+            self.device), self.test_item_similarity_matrix), 1)
 
     @abstractmethod
     def add_extra_loggers(self):
@@ -245,11 +260,29 @@ class AbstractTrainer(metaclass=ABCMeta):
         model_temp_prop_bias = temp_prop_rec - temp_prop_test
         data_temp_prop_bias = position_bias_in_data(self.pos_dist)
         data_stat_prop_bias = propensity_bias_in_data(self.train_popularity_vector)
+        data_stat_prop_bias_kl_p_u = propensity_bias_in_data_kl_p_u(self.train_popularity_vector)
+        data_stat_prop_bias_kl_u_p = propensity_bias_in_data_kl_u_p(self.train_popularity_vector)
+        data_stat_prop_bias_mse = propensity_bias_in_data_mse(self.train_popularity_vector)
+        data_stat_prop_bias_mae = propensity_bias_in_data_mae(self.train_popularity_vector)
+        data_temp_expo_bias = temporal_exposure_bias_in_data(self.pos_dist)
+        data_temp_expo_bias_kl_p_u = temporal_exposure_bias_in_data_kl_p_u(self.pos_dist)
+        data_temp_expo_bias_kl_u_p = temporal_exposure_bias_in_data_kl_u_p(self.pos_dist)
+        data_temp_expo_bias_mse = temporal_exposure_bias_in_data_mse(self.pos_dist)
+        data_temp_expo_bias_mae = temporal_exposure_bias_in_data_mae(self.pos_dist)
         self.average_metrics['temp_prop_rec'] = float(temp_prop_rec)
         self.average_metrics['temp_prop_test'] = float(temp_prop_test)
         self.average_metrics['model_temp_prop_bias'] = float(model_temp_prop_bias)
         self.average_metrics['data_temp_prop_bias'] = float(data_temp_prop_bias)
         self.average_metrics['data_stat_prop_bias'] = float(data_stat_prop_bias)
+        self.average_metrics['data_stat_prop_bias_kl_p_u'] = float(data_stat_prop_bias_kl_p_u)
+        self.average_metrics['data_stat_prop_bias_kl_u_p'] = float(data_stat_prop_bias_kl_u_p)
+        self.average_metrics['data_stat_prop_bias_mse'] = float(data_stat_prop_bias_mse)
+        self.average_metrics['data_stat_prop_bias_mae'] = float(data_stat_prop_bias_mae)
+        self.average_metrics['data_temp_expo_bias'] = float(data_temp_expo_bias)
+        self.average_metrics['data_temp_expo_bias_kl_p_u'] = float(data_temp_expo_bias_kl_p_u)
+        self.average_metrics['data_temp_expo_bias_kl_u_p'] = float(data_temp_expo_bias_kl_u_p)
+        self.average_metrics['data_temp_expo_bias_mse'] = float(data_temp_expo_bias_mse)
+        self.average_metrics['data_temp_expo_bias_mae'] = float(data_temp_expo_bias_mae)
         print('Average training positional frequency of recommendations: ' + str(temp_prop_rec))
         print('Average training positional frequency of test items: ' + str(temp_prop_test))
         print('Model temporal propensity bias: ' + str(model_temp_prop_bias))

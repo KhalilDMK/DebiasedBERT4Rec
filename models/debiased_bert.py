@@ -5,9 +5,9 @@ import torch.nn as nn
 
 
 class DebiasedBERTModel(BaseModel):
-    def __init__(self, args, pos_dist):
+    def __init__(self, args, pos_dist, train_popularity_vector_loader):
         super().__init__(args)
-        self.bert = DebiasedBERT(args, pos_dist)
+        self.bert = DebiasedBERT(args, pos_dist, train_popularity_vector_loader)
         self.out = nn.Linear(self.bert.hidden, args.num_items + 1)
 
     @classmethod
