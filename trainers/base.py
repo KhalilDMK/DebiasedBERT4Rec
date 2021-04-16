@@ -235,8 +235,12 @@ class AbstractTrainer(metaclass=ABCMeta):
                 else:
                     recommendations = torch.cat((recommendations, batch_recommendations))
                     recommendation_positions = torch.cat((recommendation_positions, torch.tensor([len([i for i in x if i != 0]) - 1 for x in seqs])))
-        with Path(self.export_root).joinpath('recommendations', 'rec_iter_' + str(self.args.iteration) + '.pkl').open('wb') as f:
-            pickle.dump(recommendations.tolist(), f)
+        if self.args.mode == 'tune':
+            with Path(self.export_root).joinpath('recommendations', 'rec_config_(' + str(self.args.bert_hidden_units) + ', ' + str(self.args.bert_num_blocks) + ', ' + str(self.args.bert_num_heads) + ', ' + str(self.args.bert_dropout) + ', ' + str(self.args.bert_mask_prob) + ', ' + str(self.args.skew_power) + ')_rep_' + str(self.args.rep) + '.pkl').open('wb') as f:
+                pickle.dump(recommendations.tolist(), f)
+        else:
+            with Path(self.export_root).joinpath('recommendations', 'rec_iter_' + str(self.args.iteration) + '.pkl').open('wb') as f:
+                pickle.dump(recommendations.tolist(), f)
         print('recommendations: ' + str(recommendations))
         print('recommendation positions: ' + str(recommendation_positions))
         return recommendations.to(self.device), recommendation_positions.to(self.device)
@@ -289,9 +293,13 @@ class AbstractTrainer(metaclass=ABCMeta):
         #print('Average Position Matching of Recommendations with Top 1 Training Positions: ' + str(
         #    top_position_matching(recommendations.cpu().numpy(), recommendation_positions.cpu().numpy(),
         #                          position_distributions[:].cpu().numpy())))
-        with open(os.path.join(self.export_root, 'logs', 'test_metrics_iter_' + str(self.args.iteration) + '.json'),
-                  'w') as f:
-            json.dump(self.average_metrics, f, indent=4)
+        if self.args.mode == 'tune':
+            with open(os.path.join(self.export_root, 'logs', 'test_metrics_config_(' + str(self.args.bert_hidden_units) + ', ' + str(self.args.bert_num_blocks) + ', ' + str(self.args.bert_num_heads) + ', ' + str(self.args.bert_dropout) + ', ' + str(self.args.bert_mask_prob) + ', ' + str(self.args.skew_power) + ')_rep_' + str(self.args.rep) + '.json'), 'w') as f:
+                json.dump(self.average_metrics, f, indent=4)
+        else:
+            with open(os.path.join(self.export_root, 'logs', 'test_metrics_iter_' + str(self.args.iteration) + '.json'),
+                      'w') as f:
+                json.dump(self.average_metrics, f, indent=4)
 
     def _create_optimizer(self):
         args = self.args

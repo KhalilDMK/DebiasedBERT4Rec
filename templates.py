@@ -3,7 +3,7 @@ def set_template(args):
         return
 
     elif args.template.startswith('loop_bert'):
-        args.mode = 'loop'
+        args.mode = 'tune'
 
         #args.dataset_code = 'ml-' + input('Input 1 for ml-1m, 20 for ml-20m: ') + 'm'
         args.dataset_code = 'ml-1m'
@@ -35,7 +35,7 @@ def set_template(args):
         args.decay_step = 25
         args.gamma = 1.0
         args.num_iterations = 20
-        args.num_epochs = 100 if args.dataset_code == 'ml-1m' else 200
+        args.num_epochs = 1 if args.dataset_code == 'ml-1m' else 200
         args.metric_ks = [5, 10]
         args.best_metric = 'NDCG@10'
 
@@ -95,6 +95,7 @@ def set_template(args):
         args.bert_max_len = 100
         args.bert_num_blocks = 1
         args.bert_num_heads = 4
+        args.skew_power = 0.1
     
     elif args.template.startswith('train_dae'):
         args.mode = 'train'
