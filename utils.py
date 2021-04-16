@@ -12,6 +12,7 @@ import torch
 import torch.backends.cudnn as cudnn
 from torch import optim as optim
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
 def setup_train(args):
@@ -134,6 +135,29 @@ def generate_plots(results, export_root, num_iterations):
         plt.ylabel(metric)
         #plt.show()
         plt.savefig(Path(export_root).joinpath('plots', metric + '.png'))
+
+
+def summarize_tuning_results(export_root):
+    hyperparameters = ['bert_hidden_units', 'bert_num_blocks', 'bert_num_heads', 'bert_dropout', 'bert_mask_prob',
+                       'skew_power']
+    log_path = Path(export_root).joinpath('logs')
+    files = os.listdir(log_path)
+    files = [x for x in files if x.startswith('test')]
+    with open(log_path.joinpath(files[0])) as f:
+        results = pd.DataFrame(index=range(len(files)), columns=hyperparameters + ['rep'] + list(json.load(f).keys()))
+    frame_idx = 0
+    for file in files:
+        configuration = eval(file.split('_')[3])
+        rep = eval(file.split('_')[-1][0:-5])
+        for i in range(len(hyperparameters)):
+            results[hyperparameters[i]][frame_idx] = configuration[i]
+        results['rep'][frame_idx] = rep
+        with open(log_path.joinpath(file)) as f:
+            result = json.load(f)
+        for metric in result:
+            results[metric][frame_idx] = result[metric]
+        frame_idx += 1
+    results.to_csv(log_path.joinpath('results.csv'))
 
 
 class AverageMeterSet(object):

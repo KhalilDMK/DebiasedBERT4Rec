@@ -42,9 +42,9 @@ class BERTTrainer(AbstractTrainer):
         #loss = self.ce(logits, labels)
         logits = self.log_softmax(logits)
         if self.args.loss_debiasing in ['temporal', 'exposure']:
-            logits = torch.div(logits, torch.pow(temp_prop_enc.unsqueeze(1), 0.1))
+            logits = torch.div(logits, torch.pow(temp_prop_enc.unsqueeze(1), self.args.skew_power))
         if self.args.loss_debiasing in ['static', 'exposure']:
-            logits = torch.div(logits, torch.pow(stat_prop_enc.unsqueeze(1), 0.1))
+            logits = torch.div(logits, torch.pow(stat_prop_enc.unsqueeze(1), self.args.skew_power))
         loss = self.nll(logits, labels)
 
         return loss

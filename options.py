@@ -12,7 +12,7 @@ parser = argparse.ArgumentParser(description='RecPlay')
 ################
 # Top Level
 ################
-parser.add_argument('--mode', type=str, default='train', choices=['train', 'loop'])
+parser.add_argument('--mode', type=str, default='train', choices=['train', 'loop', 'tune'])
 parser.add_argument('--template', type=str, default=None)
 
 ################
@@ -96,13 +96,14 @@ parser.add_argument('--model_init_seed', type=int, default=None)
 # BERT #
 parser.add_argument('--bert_max_len', type=int, default=None, help='Length of sequence for bert')
 parser.add_argument('--bert_num_items', type=int, default=None, help='Number of total items')
-parser.add_argument('--bert_hidden_units', type=int, default=None, help='Size of hidden vectors (d_model)')
-parser.add_argument('--bert_num_blocks', type=int, default=None, help='Number of transformer layers')
-parser.add_argument('--bert_num_heads', type=int, default=None, help='Number of heads for multi-attention')
-parser.add_argument('--bert_dropout', type=float, default=None, help='Dropout probability to use throughout the model')
-parser.add_argument('--bert_mask_prob', type=float, default=None, help='Probability for masking items in the training sequence')
+parser.add_argument('--bert_hidden_units', type=int, default=256, help='Size of hidden vectors (d_model)')
+parser.add_argument('--bert_num_blocks', type=int, default=2, help='Number of transformer layers')
+parser.add_argument('--bert_num_heads', type=int, default=4, help='Number of heads for multi-attention')
+parser.add_argument('--bert_dropout', type=float, default=0.1, help='Dropout probability to use throughout the model')
+parser.add_argument('--bert_mask_prob', type=float, default=0.15, help='Probability for masking items in the training sequence')
 parser.add_argument('--att_debiasing', type=str, default=None, choices=[None, 'static', 'temporal'], help='Type of debiasing to apply on the attention module.')
 parser.add_argument('--loss_debiasing', type=str, default=None, choices=[None, 'static', 'temporal', 'exposure'], help='Type of debiasing to apply on the loss.')
+parser.add_argument('--skew_power', type=float, default=1, help='Skewing power applied on propensities to scale them and avoid numerical overflow.')
 # DAE #
 parser.add_argument('--dae_num_items', type=int, default=None, help='Number of total items')
 parser.add_argument('--dae_num_hidden', type=int, default=0, help='Number of hidden layers in DAE')
@@ -122,6 +123,17 @@ parser.add_argument('--vae_dropout', type=float, default=0.5, help='Probability 
 parser.add_argument('--experiment_dir', type=str, default='experiments')
 parser.add_argument('--experiment_description', type=str, default='test')
 
+################
+# Hyperparameter tuning
+################
+parser.add_argument('--num_configurations', type=int, default=15, help='Number of random hyperparameter configurations.')
+parser.add_argument('--num_reps', type=int, default=3, help='Number of replicates in hyperparameter tuning.')
+parser.add_argument('--tune_bert_hidden_units', type=str, default='[64, 128, 256, 512]', help='Tuning values for bert_hidden_units.')
+parser.add_argument('--tune_bert_num_blocks', type=str, default='[1, 2, 3]', help='Tuning values for bert_num_blocks.')
+parser.add_argument('--tune_bert_num_heads', type=str, default='[1, 2, 4, 8]', help='Tuning values for bert_num_heads.')
+parser.add_argument('--tune_bert_dropout', type=str, default='[0, 0.01, 0.1, 0.2]', help='Tuning values for bert_dropout.')
+parser.add_argument('--tune_bert_mask_prob', type=str, default='[0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6]', help='Tuning values for bert_mask_prob.')
+parser.add_argument('--tune_skew_power', type=str, default='[0.0001, 0.001, 0.01, 0.1, 0.2, 0.5, 1]', help='Tuning values for skew_power.')
 
 ################
 args = parser.parse_args()
