@@ -28,7 +28,7 @@ parser.add_argument('--min_rating', type=int, default=4, help='Only keep ratings
 parser.add_argument('--min_uc', type=int, default=5, help='Only keep users with more than min_uc ratings')
 parser.add_argument('--min_sc', type=int, default=0, help='Only keep items with more than min_sc ratings')
 parser.add_argument('--split', type=str, default='leave_one_out', help='How to split the datasets')
-parser.add_argument('--dataset_split_seed', type=int, default=98765)
+parser.add_argument('--dataset_split_seed', type=int, default=0)
 parser.add_argument('--eval_set_size', type=int, default=500, 
                     help='Size of val and test set. 500 for ML-1m and 10000 for ML-20m recommended')
 
@@ -36,7 +36,7 @@ parser.add_argument('--eval_set_size', type=int, default=500,
 # Dataloader
 ################
 parser.add_argument('--dataloader_code', type=str, default='bert', choices=DATALOADERS.keys())
-parser.add_argument('--dataloader_random_seed', type=float, default=0.0)
+parser.add_argument('--dataloader_random_seed', type=float, default=None)
 parser.add_argument('--train_batch_size', type=int, default=64)
 parser.add_argument('--val_batch_size', type=int, default=64)
 parser.add_argument('--test_batch_size', type=int, default=64)

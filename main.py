@@ -51,7 +51,7 @@ def tune():
             print('\nRep: ' + str(rep) + '\n' + '#' * 20)
             torch.cuda.empty_cache()
             train()
-    summarize_tuning_results(export_root)
+    summarize_tuning_results(export_root, hyperparameters)
 
 
 if __name__ == '__main__':

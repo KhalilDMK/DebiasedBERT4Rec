@@ -137,9 +137,7 @@ def generate_plots(results, export_root, num_iterations):
         plt.savefig(Path(export_root).joinpath('plots', metric + '.png'))
 
 
-def summarize_tuning_results(export_root):
-    hyperparameters = ['bert_hidden_units', 'bert_num_blocks', 'bert_num_heads', 'bert_dropout', 'bert_mask_prob',
-                       'skew_power']
+def summarize_tuning_results(export_root, hyperparameters):
     log_path = Path(export_root).joinpath('logs')
     files = os.listdir(log_path)
     files = [x for x in files if x.startswith('test')]
