@@ -176,7 +176,10 @@ class AbstractTrainer(metaclass=ABCMeta):
             self.logger_service.log_val(log_data)
 
     def test(self):
-        print('Testing best model on test set...')
+        if self.args.mode == 'tune':
+            print('Testing best model on validation set...')
+        else:
+            print('Testing best model on test set...')
 
         best_model = torch.load(os.path.join(self.export_root, 'models', 'best_acc_model.pth')).get('model_state_dict')
         self.model.load_state_dict(best_model)
@@ -185,7 +188,10 @@ class AbstractTrainer(metaclass=ABCMeta):
         average_meter_set = AverageMeterSet()
 
         with torch.no_grad():
-            tqdm_dataloader = tqdm(self.test_loader)
+            if self.args.mode == 'tune':
+                tqdm_dataloader = tqdm(self.val_loader)
+            else:
+                tqdm_dataloader = tqdm(self.test_loader)
             for batch_idx, batch in enumerate(tqdm_dataloader):
                 batch = [x.to(self.device) for x in batch]
 
@@ -273,6 +279,7 @@ class AbstractTrainer(metaclass=ABCMeta):
         data_temp_expo_bias_kl_u_p = temporal_exposure_bias_in_data_kl_u_p(self.pos_dist)
         data_temp_expo_bias_mse = temporal_exposure_bias_in_data_mse(self.pos_dist)
         data_temp_expo_bias_mae = temporal_exposure_bias_in_data_mae(self.pos_dist)
+        ips_bias_condition = bias_relaxed_condition(self.pos_dist)
         self.average_metrics['temp_prop_rec'] = float(temp_prop_rec)
         self.average_metrics['temp_prop_test'] = float(temp_prop_test)
         self.average_metrics['model_temp_prop_bias'] = float(model_temp_prop_bias)
@@ -287,6 +294,7 @@ class AbstractTrainer(metaclass=ABCMeta):
         self.average_metrics['data_temp_expo_bias_kl_u_p'] = float(data_temp_expo_bias_kl_u_p)
         self.average_metrics['data_temp_expo_bias_mse'] = float(data_temp_expo_bias_mse)
         self.average_metrics['data_temp_expo_bias_mae'] = float(data_temp_expo_bias_mae)
+        self.average_metrics['ips_bias_condition'] = float(ips_bias_condition)
         print('Average training positional frequency of recommendations: ' + str(temp_prop_rec))
         print('Average training positional frequency of test items: ' + str(temp_prop_test))
         print('Model temporal propensity bias: ' + str(model_temp_prop_bias))

@@ -69,6 +69,12 @@ def temporal_exposure_bias_in_data_mae(position_distributions):
     return mae(position_distributions, u)
 
 
+def bias_relaxed_condition(position_distributions):
+    position_distributions = position_distributions[1::, :]
+    u = torch.Tensor([1 / position_distributions.shape[1]] * position_distributions.shape[1]).to(position_distributions.device)
+    return np.mean([js_divergence(x, u) for x in torch.div(position_distributions, torch.sum(position_distributions, dim=1).unsqueeze(1))])
+
+
 def kl_divergence(p, q):
     #return (p * torch.log2(p / q + sys.float_info.epsilon)).sum()
     return (p * torch.log2(p / q)).sum()
