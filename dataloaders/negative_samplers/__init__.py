@@ -8,7 +8,7 @@ NEGATIVE_SAMPLERS = {
 }
 
 #def negative_sampler_factory(code, train, val, test, user_count, item_count, sample_size, seed, save_folder):
-def negative_sampler_factory(code, train, val, test, user_count, item_count, sample_size, seed):
+def negative_sampler_factory(code, train, val, test, user_count, item_count, sample_size, seed, exposure):
     negative_sampler = NEGATIVE_SAMPLERS[code]
     #return negative_sampler(train, val, test, user_count, item_count, sample_size, seed, save_folder)
-    return negative_sampler(train, val, test, user_count, item_count, sample_size, seed)
+    return negative_sampler(train, val, test, user_count, item_count, sample_size, seed, exposure)

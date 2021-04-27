@@ -2,6 +2,9 @@ import torch
 import numpy as np
 import sys
 #from itertools import combinations
+import pandas as pd
+import os
+from sklearn.metrics import roc_auc_score
 
 
 #def recall(scores, labels, k):
@@ -66,6 +69,14 @@ def top_position_matching(recommendations, recommendation_positions, position_di
     return np.mean([position == top_train_positions[item] for (item, position) in zip(recommendations, recommendation_positions)])
 
 
+def mse(p, q):
+    return torch.pow(p - q, 2).mean().cpu().item()
+
+
+def auc_score(p, q):
+    return roc_auc_score(q.tolist(), p.tolist(), labels=[0, 1])
+
+
 def metrics_for_ks(scores, labels, candidates, ks, popularity_vector, item_similarity_matrix):
     metrics = {}
 
@@ -83,3 +94,27 @@ def metrics_for_ks(scores, labels, candidates, ks, popularity_vector, item_simil
         metrics['Diversity@%d' % k] = avg_pairwise_similarity(cut_candidates, labels.device, item_similarity_matrix)
 
     return metrics
+
+
+def metrics_for_ks_explicit(scores, ratings, tf_target):
+    metrics = {}
+    if tf_target == 'exposure':
+        metrics['AUC'] = auc_score(scores, ratings)
+    else:
+        metrics['MSE'] = mse(scores, ratings)
+    return metrics
+
+
+def save_reconstructed(rec_columns, score_type, data_root):
+    seqs = rec_columns[0]
+    items = rec_columns[1]
+    times = rec_columns[2]
+    scores = rec_columns[3]
+    rec_frame = pd.DataFrame({'seq': seqs, 'item': items, 'time': times, score_type: scores})
+    rec_frame['item'] = rec_frame['item'] + 1
+    print(rec_frame)
+    rec_frame = np.array(rec_frame)
+    if not os.path.exists(os.path.join(data_root, 'generated')):
+        os.mkdir(os.path.join(data_root, 'generated'))
+    #rec_frame.to_csv(os.path.join(export_root, 'generated', score_type + '.csv'))
+    np.save(os.path.join(data_root, 'generated', score_type + '.npy'), rec_frame)

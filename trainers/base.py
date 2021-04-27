@@ -302,7 +302,7 @@ class AbstractTrainer(metaclass=ABCMeta):
         #    top_position_matching(recommendations.cpu().numpy(), recommendation_positions.cpu().numpy(),
         #                          position_distributions[:].cpu().numpy())))
         if self.args.mode == 'tune':
-            with open(os.path.join(self.export_root, 'logs', 'test_metrics_config_(' + str(self.args.bert_hidden_units) + ', ' + str(self.args.bert_num_blocks) + ', ' + str(self.args.bert_num_heads) + ', ' + str(self.args.bert_dropout) + ', ' + str(self.args.bert_mask_prob) + ', ' + str(self.args.skew_power) + ')_rep_' + str(self.args.rep) + '.json'), 'w') as f:
+            with open(os.path.join(self.export_root, 'logs', 'test_metrics_config_(' + str(self.args.bert_hidden_units) + ', ' + str(self.args.bert_num_blocks) + ', ' + str(self.args.bert_num_heads) + ', ' + str(self.args.train_batch_size) + ', ' + str(self.args.bert_dropout) + ', ' + str(self.args.bert_mask_prob) + ', ' + str(self.args.skew_power) + ')_rep_' + str(self.args.rep) + '.json'), 'w') as f:
                 json.dump(self.average_metrics, f, indent=4)
         else:
             with open(os.path.join(self.export_root, 'logs', 'test_metrics_iter_' + str(self.args.iteration) + '.json'),
