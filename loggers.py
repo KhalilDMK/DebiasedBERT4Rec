@@ -59,18 +59,25 @@ class RecentModelLogger(AbstractBaseLogger):
 
 
 class BestModelLogger(AbstractBaseLogger):
-    def __init__(self, checkpoint_path, metric_key='mean_iou', filename='best_acc_model.pth'):
+    def __init__(self, checkpoint_path, metric_key='mean_iou', filename='best_acc_model.pth', higher_better=True):
         self.checkpoint_path = checkpoint_path
         if not os.path.exists(self.checkpoint_path):
             os.mkdir(self.checkpoint_path)
 
-        self.best_metric = 0.
+        self.higher_better = higher_better
+        if self.higher_better:
+            self.best_metric = 0.
+        else:
+            self.best_metric = float('inf')
         self.metric_key = metric_key
         self.filename = filename
 
     def log(self, *args, **kwargs):
         current_metric = kwargs[self.metric_key]
-        if self.best_metric < current_metric:
+        condition = self.best_metric < current_metric
+        if not self.higher_better:
+            condition = not condition
+        if condition:
             print("Update Best {} Model at {}".format(self.metric_key, kwargs['epoch']))
             self.best_metric = current_metric
             save_state_dict(kwargs['state_dict'], self.checkpoint_path, self.filename)

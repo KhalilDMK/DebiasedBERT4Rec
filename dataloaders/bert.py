@@ -22,13 +22,13 @@ class BertDataloader(AbstractDataloader):
         train_negative_sampler = negative_sampler_factory(code, self.train, self.val, self.test,
                                                           self.user_count, self.item_count,
                                                           args.train_negative_sample_size,
-                                                          args.train_negative_sampling_seed)
+                                                          args.train_negative_sampling_seed, self.exposure)
         #                                                 , self.save_folder)
         code = args.test_negative_sampler_code
         test_negative_sampler = negative_sampler_factory(code, self.train, self.val, self.test,
                                                          self.user_count, self.item_count,
                                                          args.test_negative_sample_size,
-                                                         args.test_negative_sampling_seed)
+                                                         args.test_negative_sampling_seed, self.exposure)
         #                                                , self.save_folder)
 
         self.train_negative_samples = train_negative_sampler.get_negative_samples()
@@ -61,6 +61,18 @@ class BertDataloader(AbstractDataloader):
         #    prop_bias_in_data = propensity_bias_in_data(popularity_vector_loader.popularity_vector)
         #    print('Propensity bias in data: ' + str(prop_bias_in_data))
         return popularity_vector_loader
+
+    def get_temporal_propensity_dataloader(self):
+        temporal_propensity_loader = TemporalPropensity(self.theta)
+        return temporal_propensity_loader.theta
+
+    def get_temporal_relevance_dataloader(self):
+        temporal_relevance_loader = TemporalRelevance(self.gamma)
+        return temporal_relevance_loader.gamma
+
+    def get_static_propensity_dataloader(self):
+        static_propensity_loader = StaticPropensity(self.theta)
+        return static_propensity_loader.stat_theta
 
     def _get_train_loader(self):
         dataset = self._get_train_dataset()
@@ -188,17 +200,19 @@ class BertPositionDistribution(data_utils.Dataset):
         self.num_items = num_items
         self.u2seq = u2seq
         self.items = list(range(1, self.num_items + 1))
-        self.max_len = max_len
-        self.u2seq = [x[-self.max_len:] for x in self.u2seq.values()]
+        #self.max_len = max_len
+        self.u2seq = [x[-max_len:] for x in self.u2seq.values()]
         self.seq = np.zeros([len(self.u2seq), len(max(self.u2seq, key=lambda x: len(x)))])
         for i, j in enumerate(self.u2seq):
             #self.seq[i][0:len(j)] = j
             self.seq[i][-len(j)::] = j
-        occurrences = [Counter(self.seq[:, j]) for j in range(self.max_len)]
+        if self.seq.shape[1] < max_len:
+            self.seq = np.concatenate((np.zeros((self.seq.shape[0], max_len - self.seq.shape[1])), self.seq), axis=1)
+        occurrences = [Counter(self.seq[:, j]) for j in range(max_len)]
         item_index = pd.Index(range(self.num_items + 1))
         occurrences = pd.DataFrame(occurrences).transpose().reindex(item_index).sort_index().fillna(0).values[1::]
         #occurrences = np.concatenate((np.zeros((1, self.max_len)), occurrences), axis=0)
-        softmax = torch.nn.Softmax()
+        #softmax = torch.nn.Softmax()
         occurrences = torch.Tensor(occurrences)
         #self.position_distributions = torch.pow(occurrences / torch.max(occurrences, dim=0)[0], 0.5)
         #self.position_distributions = occurrences / torch.max(occurrences, dim=0)[0]
@@ -223,6 +237,8 @@ class BertPopularityVector(data_utils.Dataset):
         for i, j in enumerate(self.u2seq):
             #self.seq[i][0:len(j)] = j
             self.seq[i][-len(j)::] = j
+        if self.seq.shape[1] < max_len:
+            self.seq = np.concatenate((np.zeros((self.seq.shape[0], max_len - self.seq.shape[1])), self.seq), axis=1)
         self.seq = {i: list(self.seq[i]) for i in range(len(self.seq))}
         if include_test:
             self.seq = {k:self.seq[k] + self.u2answer[k] for k in self.seq}
@@ -257,3 +273,34 @@ class BertPopularityVector(data_utils.Dataset):
 
     def __getitem__(self, index):
         return self.popularity_vector[index]
+
+
+class TemporalPropensity(data_utils.Dataset):
+    def __init__(self, theta):
+        self.theta = torch.Tensor(theta)
+
+    def __len__(self):
+        return len(self.theta)
+
+    def __getitem__(self, index):
+        return self.theta[index]
+
+class TemporalRelevance(data_utils.Dataset):
+    def __init__(self, gamma):
+        self.gamma = torch.Tensor(gamma)
+
+    def __len__(self):
+        return len(self.gamma)
+
+    def __getitem__(self, index):
+        return self.gamma[index]
+
+class StaticPropensity(data_utils.Dataset):
+    def __init__(self, theta):
+        self.stat_theta = torch.Tensor(theta).sum(-1)
+
+    def __len__(self):
+        return len(self.stat_theta)
+
+    def __getitem__(self, index):
+        return self.stat_theta[index]

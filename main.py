@@ -10,7 +10,7 @@ import itertools
 
 def train():
     args.iteration += 1
-    train_loader, val_loader, test_loader, position_distributions, train_popularity_vector_loader, val_popularity_vector_loader, test_popularity_vector_loader = dataloader_factory(args, export_root)
+    train_loader, val_loader, test_loader, position_distributions, train_popularity_vector_loader, val_popularity_vector_loader, test_popularity_vector_loader, user_count, item_count = dataloader_factory(args, export_root)
     model = model_factory(args, position_distributions, train_popularity_vector_loader)
     trainer = trainer_factory(args, model, train_loader, val_loader, test_loader, export_root, position_distributions, train_popularity_vector_loader, val_popularity_vector_loader, test_popularity_vector_loader)
     trainer.train()
@@ -36,7 +36,7 @@ def loop():
 def tune():
     num_configurations = args.num_configurations
     num_reps = args.num_reps
-    hyperparameters = ['bert_hidden_units', 'bert_num_blocks', 'bert_num_heads', 'bert_dropout', 'bert_mask_prob', 'skew_power']
+    hyperparameters = ['bert_hidden_units', 'bert_num_blocks', 'bert_num_heads', 'train_batch_size', 'bert_dropout', 'bert_mask_prob', 'skew_power']
     hyper_tun_configurations = []
     for hyperparameter in hyperparameters:
         exec('tune_' + hyperparameter + ' = eval(eval("args.tune_" + hyperparameter))')
