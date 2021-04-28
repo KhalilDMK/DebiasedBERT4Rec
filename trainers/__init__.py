@@ -1,17 +1,13 @@
 from .bert import BERTTrainer
 from .tf import TFTrainer
-from .dae import DAETrainer
-from .vae import VAETrainer
 
 
 TRAINERS = {
     BERTTrainer.code(): BERTTrainer,
-    TFTrainer.code(): TFTrainer,
-    DAETrainer.code(): DAETrainer,
-    VAETrainer.code(): VAETrainer
+    TFTrainer.code(): TFTrainer
 }
 
 
-def trainer_factory(args, model, train_loader, val_loader, test_loader, export_root, pos_dist, train_popularity_vector_loader, val_popularity_vector_loader, test_popularity_vector_loader):
+def trainer_factory(args, model, train_loader, val_loader, test_loader, train_temporal_popularity, train_popularity_loader, val_popularity_loader, test_popularity_loader):
     trainer = TRAINERS[args.trainer_code]
-    return trainer(args, model, train_loader, val_loader, test_loader, export_root, pos_dist, train_popularity_vector_loader, val_popularity_vector_loader, test_popularity_vector_loader)
+    return trainer(args, model, train_loader, val_loader, test_loader, train_temporal_popularity, train_popularity_loader, val_popularity_loader, test_popularity_loader)

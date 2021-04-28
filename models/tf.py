@@ -3,11 +3,11 @@ import torch.nn as nn
 
 
 class TFModel(BaseModel):
-    def __init__(self, args, pos_dist, train_popularity_vector_loader):
+    def __init__(self, args):
         super().__init__(args)
         user_count = args.user_count
         item_count = args.item_count
-        num_hidden = args.tf_num_hidden
+        num_hidden = args.tf_hidden_units
         num_timesteps = args.bert_max_len
 
         self.embed_session = nn.Embedding(user_count, num_hidden)

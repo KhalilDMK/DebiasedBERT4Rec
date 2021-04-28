@@ -1,7 +1,7 @@
 from loggers import *
 from config import STATE_DICT_KEY, OPTIMIZER_STATE_DICT_KEY
 from utils import AverageMeterSet
-from dataloaders.utils import *
+#from dataloaders.utils import *
 
 import torch
 import torch.nn as nn
@@ -9,17 +9,17 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-import json
+#import json
 from abc import *
 from pathlib import Path
-from trainers.utils import positional_frequency, top_position_matching
-import pickle
+#from trainers.utils import positional_frequency, top_position_matching
+#import pickle
 import random
-import sys
+#import sys
 
 
 class AbstractTrainer(metaclass=ABCMeta):
-    def __init__(self, args, model, train_loader, val_loader, test_loader, export_root, pos_dist, train_popularity_vector_loader, val_popularity_vector_loader, test_popularity_vector_loader):
+    def __init__(self, args, model, train_loader, val_loader, test_loader):
         self.args = args
         self.device = args.device
         self.model = model.to(self.device)
@@ -38,36 +38,36 @@ class AbstractTrainer(metaclass=ABCMeta):
         self.metric_ks = args.metric_ks
         self.best_metric = args.best_metric
 
-        self.export_root = export_root
+        self.export_root = self.args.export_root
         self.writer, self.train_loggers, self.val_loggers = self._create_loggers()
         self.add_extra_loggers()
         self.logger_service = LoggerService(self.train_loggers, self.val_loggers)
         self.log_period_as_iter = args.log_period_as_iter
 
-        self.max_len = args.bert_max_len
-        self.pos_dist = pos_dist.to(self.device)
-        self.pos_dist = torch.cat((torch.zeros(1, self.max_len).to(self.device), self.pos_dist), 0) + sys.float_info.epsilon
-        self.train_popularity_vector = train_popularity_vector_loader.popularity_vector.to(self.device)
-        self.train_popularity_vector = torch.cat((torch.FloatTensor([0]).to(self.device), self.train_popularity_vector)) + sys.float_info.epsilon
-        self.train_item_similarity_matrix = train_popularity_vector_loader.item_similarity_matrix.to(self.device)
-        self.train_item_similarity_matrix = torch.cat((torch.zeros(1, self.train_item_similarity_matrix.shape[1]).to(self.device), self.train_item_similarity_matrix), 0)
-        self.train_item_similarity_matrix = torch.cat((torch.zeros(self.train_item_similarity_matrix.shape[0], 1).to(self.device), self.train_item_similarity_matrix), 1)
-        self.val_popularity_vector = val_popularity_vector_loader.popularity_vector.to(self.device)
-        self.val_popularity_vector = torch.cat(
-            (torch.FloatTensor([0]).to(self.device), self.val_popularity_vector)) + sys.float_info.epsilon
-        self.val_item_similarity_matrix = val_popularity_vector_loader.item_similarity_matrix.to(self.device)
-        self.val_item_similarity_matrix = torch.cat((torch.zeros(1, self.val_item_similarity_matrix.shape[1]).to(
-            self.device), self.val_item_similarity_matrix), 0)
-        self.val_item_similarity_matrix = torch.cat((torch.zeros(self.val_item_similarity_matrix.shape[0], 1).to(
-            self.device), self.val_item_similarity_matrix), 1)
-        self.test_popularity_vector = test_popularity_vector_loader.popularity_vector.to(self.device)
-        self.test_popularity_vector = torch.cat(
-            (torch.FloatTensor([0]).to(self.device), self.test_popularity_vector)) + sys.float_info.epsilon
-        self.test_item_similarity_matrix = test_popularity_vector_loader.item_similarity_matrix.to(self.device)
-        self.test_item_similarity_matrix = torch.cat((torch.zeros(1, self.test_item_similarity_matrix.shape[1]).to(
-            self.device), self.test_item_similarity_matrix), 0)
-        self.test_item_similarity_matrix = torch.cat((torch.zeros(self.test_item_similarity_matrix.shape[0], 1).to(
-            self.device), self.test_item_similarity_matrix), 1)
+        # self.max_len = args.bert_max_len
+        # self.pos_dist = train_temporal_popularity.to(self.device)
+        # self.pos_dist = torch.cat((torch.zeros(1, self.max_len).to(self.device), self.pos_dist), 0) + sys.float_info.epsilon
+        # self.train_popularity_vector = train_popularity_loader.popularity_vector.to(self.device)
+        # self.train_popularity_vector = torch.cat((torch.FloatTensor([0]).to(self.device), self.train_popularity_vector)) + sys.float_info.epsilon
+        # self.train_item_similarity_matrix = train_popularity_loader.item_similarity_matrix.to(self.device)
+        # self.train_item_similarity_matrix = torch.cat((torch.zeros(1, self.train_item_similarity_matrix.shape[1]).to(self.device), self.train_item_similarity_matrix), 0)
+        # self.train_item_similarity_matrix = torch.cat((torch.zeros(self.train_item_similarity_matrix.shape[0], 1).to(self.device), self.train_item_similarity_matrix), 1)
+        # self.val_popularity_vector = val_popularity_loader.popularity_vector.to(self.device)
+        # self.val_popularity_vector = torch.cat(
+        #     (torch.FloatTensor([0]).to(self.device), self.val_popularity_vector)) + sys.float_info.epsilon
+        # self.val_item_similarity_matrix = val_popularity_loader.item_similarity_matrix.to(self.device)
+        # self.val_item_similarity_matrix = torch.cat((torch.zeros(1, self.val_item_similarity_matrix.shape[1]).to(
+        #     self.device), self.val_item_similarity_matrix), 0)
+        # self.val_item_similarity_matrix = torch.cat((torch.zeros(self.val_item_similarity_matrix.shape[0], 1).to(
+        #     self.device), self.val_item_similarity_matrix), 1)
+        # self.test_popularity_vector = test_popularity_loader.popularity_vector.to(self.device)
+        # self.test_popularity_vector = torch.cat(
+        #     (torch.FloatTensor([0]).to(self.device), self.test_popularity_vector)) + sys.float_info.epsilon
+        # self.test_item_similarity_matrix = test_popularity_loader.item_similarity_matrix.to(self.device)
+        # self.test_item_similarity_matrix = torch.cat((torch.zeros(1, self.test_item_similarity_matrix.shape[1]).to(
+        #     self.device), self.test_item_similarity_matrix), 0)
+        # self.test_item_similarity_matrix = torch.cat((torch.zeros(self.test_item_similarity_matrix.shape[0], 1).to(
+        #     self.device), self.test_item_similarity_matrix), 1)
 
     @abstractmethod
     def add_extra_loggers(self):
@@ -142,172 +142,172 @@ class AbstractTrainer(metaclass=ABCMeta):
 
         return accum_iter
 
-    def validate(self, epoch, accum_iter):
-        self.model.eval()
+    #def validate(self, epoch, accum_iter):
+    #    self.model.eval()
 
-        average_meter_set = AverageMeterSet()
+    #    average_meter_set = AverageMeterSet()
 
-        with torch.no_grad():
-            tqdm_dataloader = tqdm(self.val_loader)
-            for batch_idx, batch in enumerate(tqdm_dataloader):
-                batch = [x.to(self.device) for x in batch]
+    #    with torch.no_grad():
+    #        tqdm_dataloader = tqdm(self.val_loader)
+    #        for batch_idx, batch in enumerate(tqdm_dataloader):
+    #            batch = [x.to(self.device) for x in batch]
 
-                metrics = self.calculate_metrics(batch, self.val_popularity_vector, self.val_item_similarity_matrix)
+    #            metrics = self.calculate_metrics(batch, self.val_popularity_vector, self.val_item_similarity_matrix)
 
-                for k, v in metrics.items():
-                    average_meter_set.update(k, v)
-                description_metrics = ['NDCG@%d' % k for k in self.metric_ks[:3]] +\
-                                      ['Recall@%d' % k for k in self.metric_ks[:3]] + \
-                                      ['AvgPop@%d' % k for k in self.metric_ks[:3]] + \
-                                      ['EFD@%d' % k for k in self.metric_ks[:3]] + \
-                                      ['Diversity@%d' % k for k in self.metric_ks[:3]]
-                description = 'Val: ' + ', '.join(s + ' {:.3f}' for s in description_metrics)
-                description = description.replace('NDCG', 'N').replace('Recall', 'R')
-                description = description.format(*(average_meter_set[k].avg for k in description_metrics))
-                tqdm_dataloader.set_description(description)
+    #            for k, v in metrics.items():
+    #                average_meter_set.update(k, v)
+    #            description_metrics = ['NDCG@%d' % k for k in self.metric_ks[:3]] +\
+    #                                  ['Recall@%d' % k for k in self.metric_ks[:3]] + \
+    #                                  ['AvgPop@%d' % k for k in self.metric_ks[:3]] + \
+    #                                  ['EFD@%d' % k for k in self.metric_ks[:3]] + \
+    #                                  ['Diversity@%d' % k for k in self.metric_ks[:3]]
+    #            description = 'Val: ' + ', '.join(s + ' {:.3f}' for s in description_metrics)
+    #            description = description.replace('NDCG', 'N').replace('Recall', 'R')
+    #            description = description.format(*(average_meter_set[k].avg for k in description_metrics))
+    #            tqdm_dataloader.set_description(description)
 
-            log_data = {
-                'state_dict': (self._create_state_dict()),
-                'epoch': epoch+1,
-                'accum_iter': accum_iter,
-            }
-            log_data.update(average_meter_set.averages())
-            self.log_extra_val_info(log_data)
-            self.logger_service.log_val(log_data)
+    #        log_data = {
+    #            'state_dict': (self._create_state_dict()),
+    #            'epoch': epoch+1,
+    #            'accum_iter': accum_iter,
+    #        }
+    #        log_data.update(average_meter_set.averages())
+    #        self.log_extra_val_info(log_data)
+    #        self.logger_service.log_val(log_data)
 
-    def test(self):
-        if self.args.mode == 'tune':
-            print('Testing best model on validation set...')
-        else:
-            print('Testing best model on test set...')
+    # def test(self):
+    #     if self.args.mode == 'tune':
+    #         print('Testing best model on validation set...')
+    #     else:
+    #         print('Testing best model on test set...')
+    #
+    #     best_model = torch.load(os.path.join(self.export_root, 'models', 'best_acc_model.pth')).get('model_state_dict')
+    #     self.model.load_state_dict(best_model)
+    #     self.model.eval()
+    #
+    #     average_meter_set = AverageMeterSet()
+    #
+    #     with torch.no_grad():
+    #         if self.args.mode == 'tune':
+    #             tqdm_dataloader = tqdm(self.val_loader)
+    #         else:
+    #             tqdm_dataloader = tqdm(self.test_loader)
+    #         for batch_idx, batch in enumerate(tqdm_dataloader):
+    #             batch = [x.to(self.device) for x in batch]
+    #
+    #             metrics = self.calculate_metrics(batch, self.test_popularity_vector, self.test_item_similarity_matrix)
+    #
+    #             for k, v in metrics.items():
+    #                 average_meter_set.update(k, v)
+    #             description_metrics = ['NDCG@%d' % k for k in self.metric_ks[:3]] +\
+    #                                   ['Recall@%d' % k for k in self.metric_ks[:3]] + \
+    #                                   ['AvgPop@%d' % k for k in self.metric_ks[:3]] + \
+    #                                   ['EFD@%d' % k for k in self.metric_ks[:3]] + \
+    #                                   ['Diversity@%d' % k for k in self.metric_ks[:3]]
+    #             description = 'Val: ' + ', '.join(s + ' {:.3f}' for s in description_metrics)
+    #             description = description.replace('NDCG', 'N').replace('Recall', 'R')
+    #             description = description.format(*(average_meter_set[k].avg for k in description_metrics))
+    #             tqdm_dataloader.set_description(description)
+    #
+    #         self.average_metrics = average_meter_set.averages()
+    #         #with open(os.path.join(self.export_root, 'logs', 'test_metrics_iter_' + str(self.args.iteration) + '.json'), 'w') as f:
+    #         #    json.dump(self.average_metrics, f, indent=4)
+    #         print(self.average_metrics)
 
-        best_model = torch.load(os.path.join(self.export_root, 'models', 'best_acc_model.pth')).get('model_state_dict')
-        self.model.load_state_dict(best_model)
-        self.model.eval()
+    # def recommend(self):
+    #     print('Generating recommendations for test sessions...')
+    #     best_model = torch.load(os.path.join(self.export_root, 'models', 'best_acc_model.pth')).get('model_state_dict')
+    #     self.model.load_state_dict(best_model)
+    #     self.model.eval()
+    #     recommendations = None
+    #     recommendation_positions = None
+    #     softmax = nn.Softmax(dim=1)
+    #     with torch.no_grad():
+    #         tqdm_dataloader = tqdm(self.test_loader)
+    #         for batch_idx, batch in enumerate(tqdm_dataloader):
+    #             batch = [x.to(self.device) for x in batch]
+    #             seqs, candidates, labels = batch
+    #             scores = self.model(seqs)  # B x T x V
+    #             scores = scores[:, -1, :]  # B x V
+    #             num_items = scores.shape[1]
+    #             train_batch_indices, train_item_indices = self.get_indices_to_ignore(seqs, num_items)
+    #             scores = softmax(scores)
+    #             scores[train_batch_indices, train_item_indices] = float('-inf')
+    #             #batch_recommendations = torch.argmax(scores, dim=1)
+    #             batch_recommendations = self.generate_batch_recommendations(seqs, scores)
+    #             if recommendations == None:
+    #                 recommendations = batch_recommendations
+    #                 recommendation_positions = torch.Tensor([len([i for i in x if i != 0]) - 1 for x in seqs])
+    #             else:
+    #                 recommendations = torch.cat((recommendations, batch_recommendations))
+    #                 recommendation_positions = torch.cat((recommendation_positions, torch.tensor([len([i for i in x if i != 0]) - 1 for x in seqs])))
+    #     if self.args.mode in ['tune_bert_real', 'tune_bert_semi_synthetic', 'tune_tf']:
+    #         with Path(self.export_root).joinpath('recommendations', 'rec_config_(' + str(self.args.bert_hidden_units) + ', ' + str(self.args.bert_num_blocks) + ', ' + str(self.args.bert_num_heads) + ', ' + str(self.args.bert_dropout) + ', ' + str(self.args.bert_mask_prob) + ', ' + str(self.args.skew_power) + ')_rep_' + str(self.args.rep) + '.pkl').open('wb') as f:
+    #             pickle.dump(recommendations.tolist(), f)
+    #     else:
+    #         with Path(self.export_root).joinpath('recommendations', 'rec_iter_' + str(self.args.iteration) + '.pkl').open('wb') as f:
+    #             pickle.dump(recommendations.tolist(), f)
+    #     print('recommendations: ' + str(recommendations))
+    #     print('recommendation positions: ' + str(recommendation_positions))
+    #     return recommendations.to(self.device), recommendation_positions.to(self.device)
 
-        average_meter_set = AverageMeterSet()
-
-        with torch.no_grad():
-            if self.args.mode == 'tune':
-                tqdm_dataloader = tqdm(self.val_loader)
-            else:
-                tqdm_dataloader = tqdm(self.test_loader)
-            for batch_idx, batch in enumerate(tqdm_dataloader):
-                batch = [x.to(self.device) for x in batch]
-
-                metrics = self.calculate_metrics(batch, self.test_popularity_vector, self.test_item_similarity_matrix)
-
-                for k, v in metrics.items():
-                    average_meter_set.update(k, v)
-                description_metrics = ['NDCG@%d' % k for k in self.metric_ks[:3]] +\
-                                      ['Recall@%d' % k for k in self.metric_ks[:3]] + \
-                                      ['AvgPop@%d' % k for k in self.metric_ks[:3]] + \
-                                      ['EFD@%d' % k for k in self.metric_ks[:3]] + \
-                                      ['Diversity@%d' % k for k in self.metric_ks[:3]]
-                description = 'Val: ' + ', '.join(s + ' {:.3f}' for s in description_metrics)
-                description = description.replace('NDCG', 'N').replace('Recall', 'R')
-                description = description.format(*(average_meter_set[k].avg for k in description_metrics))
-                tqdm_dataloader.set_description(description)
-
-            self.average_metrics = average_meter_set.averages()
-            #with open(os.path.join(self.export_root, 'logs', 'test_metrics_iter_' + str(self.args.iteration) + '.json'), 'w') as f:
-            #    json.dump(self.average_metrics, f, indent=4)
-            print(self.average_metrics)
-
-    def recommend(self):
-        print('Generating recommendations for test sessions...')
-        best_model = torch.load(os.path.join(self.export_root, 'models', 'best_acc_model.pth')).get('model_state_dict')
-        self.model.load_state_dict(best_model)
-        self.model.eval()
-        recommendations = None
-        recommendation_positions = None
-        softmax = nn.Softmax(dim=1)
-        with torch.no_grad():
-            tqdm_dataloader = tqdm(self.test_loader)
-            for batch_idx, batch in enumerate(tqdm_dataloader):
-                batch = [x.to(self.device) for x in batch]
-                seqs, candidates, labels = batch
-                scores = self.model(seqs)  # B x T x V
-                scores = scores[:, -1, :]  # B x V
-                num_items = scores.shape[1]
-                train_batch_indices, train_item_indices = self.get_indices_to_ignore(seqs, num_items)
-                scores = softmax(scores)
-                scores[train_batch_indices, train_item_indices] = float('-inf')
-                #batch_recommendations = torch.argmax(scores, dim=1)
-                batch_recommendations = self.generate_batch_recommendations(seqs, scores)
-                if recommendations == None:
-                    recommendations = batch_recommendations
-                    recommendation_positions = torch.Tensor([len([i for i in x if i != 0]) - 1 for x in seqs])
-                else:
-                    recommendations = torch.cat((recommendations, batch_recommendations))
-                    recommendation_positions = torch.cat((recommendation_positions, torch.tensor([len([i for i in x if i != 0]) - 1 for x in seqs])))
-        if self.args.mode == 'tune':
-            with Path(self.export_root).joinpath('recommendations', 'rec_config_(' + str(self.args.bert_hidden_units) + ', ' + str(self.args.bert_num_blocks) + ', ' + str(self.args.bert_num_heads) + ', ' + str(self.args.bert_dropout) + ', ' + str(self.args.bert_mask_prob) + ', ' + str(self.args.skew_power) + ')_rep_' + str(self.args.rep) + '.pkl').open('wb') as f:
-                pickle.dump(recommendations.tolist(), f)
-        else:
-            with Path(self.export_root).joinpath('recommendations', 'rec_iter_' + str(self.args.iteration) + '.pkl').open('wb') as f:
-                pickle.dump(recommendations.tolist(), f)
-        print('recommendations: ' + str(recommendations))
-        print('recommendation positions: ' + str(recommendation_positions))
-        return recommendations.to(self.device), recommendation_positions.to(self.device)
-
-    def eval_position_bias(self, recommendations, recommendation_positions):
-        print('Position Bias Evaluation...')
-        test_items = None
-        with torch.no_grad():
-            tqdm_dataloader = tqdm(self.test_loader)
-            for batch_idx, batch in enumerate(tqdm_dataloader):
-                batch = [x.to(self.device) for x in batch]
-                seqs, candidates, labels = batch
-                if test_items == None:
-                    test_items = candidates[:, 0]
-                else:
-                    test_items = torch.cat((test_items, candidates[:, 0]))
-        temp_prop_rec = positional_frequency(recommendations.cpu().numpy(), recommendation_positions.cpu().numpy(),
-                                 self.pos_dist.cpu().numpy())
-        temp_prop_test = positional_frequency(test_items.cpu().numpy(), recommendation_positions.cpu().numpy(),
-                                 self.pos_dist.cpu().numpy())
-        model_temp_prop_bias = temp_prop_rec - temp_prop_test
-        data_temp_prop_bias = position_bias_in_data(self.pos_dist)
-        data_stat_prop_bias = propensity_bias_in_data(self.train_popularity_vector)
-        data_stat_prop_bias_kl_p_u = propensity_bias_in_data_kl_p_u(self.train_popularity_vector)
-        data_stat_prop_bias_kl_u_p = propensity_bias_in_data_kl_u_p(self.train_popularity_vector)
-        data_stat_prop_bias_mse = propensity_bias_in_data_mse(self.train_popularity_vector)
-        data_stat_prop_bias_mae = propensity_bias_in_data_mae(self.train_popularity_vector)
-        data_temp_expo_bias = temporal_exposure_bias_in_data(self.pos_dist)
-        data_temp_expo_bias_kl_p_u = temporal_exposure_bias_in_data_kl_p_u(self.pos_dist)
-        data_temp_expo_bias_kl_u_p = temporal_exposure_bias_in_data_kl_u_p(self.pos_dist)
-        data_temp_expo_bias_mse = temporal_exposure_bias_in_data_mse(self.pos_dist)
-        data_temp_expo_bias_mae = temporal_exposure_bias_in_data_mae(self.pos_dist)
-        ips_bias_condition = bias_relaxed_condition(self.pos_dist)
-        self.average_metrics['temp_prop_rec'] = float(temp_prop_rec)
-        self.average_metrics['temp_prop_test'] = float(temp_prop_test)
-        self.average_metrics['model_temp_prop_bias'] = float(model_temp_prop_bias)
-        self.average_metrics['data_temp_prop_bias'] = float(data_temp_prop_bias)
-        self.average_metrics['data_stat_prop_bias'] = float(data_stat_prop_bias)
-        self.average_metrics['data_stat_prop_bias_kl_p_u'] = float(data_stat_prop_bias_kl_p_u)
-        self.average_metrics['data_stat_prop_bias_kl_u_p'] = float(data_stat_prop_bias_kl_u_p)
-        self.average_metrics['data_stat_prop_bias_mse'] = float(data_stat_prop_bias_mse)
-        self.average_metrics['data_stat_prop_bias_mae'] = float(data_stat_prop_bias_mae)
-        self.average_metrics['data_temp_expo_bias'] = float(data_temp_expo_bias)
-        self.average_metrics['data_temp_expo_bias_kl_p_u'] = float(data_temp_expo_bias_kl_p_u)
-        self.average_metrics['data_temp_expo_bias_kl_u_p'] = float(data_temp_expo_bias_kl_u_p)
-        self.average_metrics['data_temp_expo_bias_mse'] = float(data_temp_expo_bias_mse)
-        self.average_metrics['data_temp_expo_bias_mae'] = float(data_temp_expo_bias_mae)
-        self.average_metrics['ips_bias_condition'] = float(ips_bias_condition)
-        print('Average training positional frequency of recommendations: ' + str(temp_prop_rec))
-        print('Average training positional frequency of test items: ' + str(temp_prop_test))
-        print('Model temporal propensity bias: ' + str(model_temp_prop_bias))
-        #print('Average Position Matching of Recommendations with Top 1 Training Positions: ' + str(
-        #    top_position_matching(recommendations.cpu().numpy(), recommendation_positions.cpu().numpy(),
-        #                          position_distributions[:].cpu().numpy())))
-        if self.args.mode == 'tune':
-            with open(os.path.join(self.export_root, 'logs', 'test_metrics_config_(' + str(self.args.bert_hidden_units) + ', ' + str(self.args.bert_num_blocks) + ', ' + str(self.args.bert_num_heads) + ', ' + str(self.args.train_batch_size) + ', ' + str(self.args.bert_dropout) + ', ' + str(self.args.bert_mask_prob) + ', ' + str(self.args.skew_power) + ')_rep_' + str(self.args.rep) + '.json'), 'w') as f:
-                json.dump(self.average_metrics, f, indent=4)
-        else:
-            with open(os.path.join(self.export_root, 'logs', 'test_metrics_iter_' + str(self.args.iteration) + '.json'),
-                      'w') as f:
-                json.dump(self.average_metrics, f, indent=4)
+    # def eval_position_bias(self, recommendations, recommendation_positions):
+    #     print('Position Bias Evaluation...')
+    #     test_items = None
+    #     with torch.no_grad():
+    #         tqdm_dataloader = tqdm(self.test_loader)
+    #         for batch_idx, batch in enumerate(tqdm_dataloader):
+    #             batch = [x.to(self.device) for x in batch]
+    #             seqs, candidates, labels = batch
+    #             if test_items == None:
+    #                 test_items = candidates[:, 0]
+    #             else:
+    #                 test_items = torch.cat((test_items, candidates[:, 0]))
+    #     temp_prop_rec = positional_frequency(recommendations.cpu().numpy(), recommendation_positions.cpu().numpy(),
+    #                              self.pos_dist.cpu().numpy())
+    #     temp_prop_test = positional_frequency(test_items.cpu().numpy(), recommendation_positions.cpu().numpy(),
+    #                              self.pos_dist.cpu().numpy())
+    #     model_temp_prop_bias = temp_prop_rec - temp_prop_test
+    #     data_temp_prop_bias = position_bias_in_data(self.pos_dist)
+    #     data_stat_prop_bias = propensity_bias_in_data(self.train_popularity_vector)
+    #     data_stat_prop_bias_kl_p_u = propensity_bias_in_data_kl_p_u(self.train_popularity_vector)
+    #     data_stat_prop_bias_kl_u_p = propensity_bias_in_data_kl_u_p(self.train_popularity_vector)
+    #     data_stat_prop_bias_mse = propensity_bias_in_data_mse(self.train_popularity_vector)
+    #     data_stat_prop_bias_mae = propensity_bias_in_data_mae(self.train_popularity_vector)
+    #     data_temp_expo_bias = temporal_exposure_bias_in_data(self.pos_dist)
+    #     data_temp_expo_bias_kl_p_u = temporal_exposure_bias_in_data_kl_p_u(self.pos_dist)
+    #     data_temp_expo_bias_kl_u_p = temporal_exposure_bias_in_data_kl_u_p(self.pos_dist)
+    #     data_temp_expo_bias_mse = temporal_exposure_bias_in_data_mse(self.pos_dist)
+    #     data_temp_expo_bias_mae = temporal_exposure_bias_in_data_mae(self.pos_dist)
+    #     ips_bias_condition = bias_relaxed_condition(self.pos_dist)
+    #     self.average_metrics['temp_prop_rec'] = float(temp_prop_rec)
+    #     self.average_metrics['temp_prop_test'] = float(temp_prop_test)
+    #     self.average_metrics['model_temp_prop_bias'] = float(model_temp_prop_bias)
+    #     self.average_metrics['data_temp_prop_bias'] = float(data_temp_prop_bias)
+    #     self.average_metrics['data_stat_prop_bias'] = float(data_stat_prop_bias)
+    #     self.average_metrics['data_stat_prop_bias_kl_p_u'] = float(data_stat_prop_bias_kl_p_u)
+    #     self.average_metrics['data_stat_prop_bias_kl_u_p'] = float(data_stat_prop_bias_kl_u_p)
+    #     self.average_metrics['data_stat_prop_bias_mse'] = float(data_stat_prop_bias_mse)
+    #     self.average_metrics['data_stat_prop_bias_mae'] = float(data_stat_prop_bias_mae)
+    #     self.average_metrics['data_temp_expo_bias'] = float(data_temp_expo_bias)
+    #     self.average_metrics['data_temp_expo_bias_kl_p_u'] = float(data_temp_expo_bias_kl_p_u)
+    #     self.average_metrics['data_temp_expo_bias_kl_u_p'] = float(data_temp_expo_bias_kl_u_p)
+    #     self.average_metrics['data_temp_expo_bias_mse'] = float(data_temp_expo_bias_mse)
+    #     self.average_metrics['data_temp_expo_bias_mae'] = float(data_temp_expo_bias_mae)
+    #     self.average_metrics['ips_bias_condition'] = float(ips_bias_condition)
+    #     print('Average training positional frequency of recommendations: ' + str(temp_prop_rec))
+    #     print('Average training positional frequency of test items: ' + str(temp_prop_test))
+    #     print('Model temporal propensity bias: ' + str(model_temp_prop_bias))
+    #     #print('Average Position Matching of Recommendations with Top 1 Training Positions: ' + str(
+    #     #    top_position_matching(recommendations.cpu().numpy(), recommendation_positions.cpu().numpy(),
+    #     #                          position_distributions[:].cpu().numpy())))
+    #     if self.args.mode in ['tune_bert_real', 'tune_bert_semi_synthetic', 'tune_tf']:
+    #         with open(os.path.join(self.export_root, 'logs', 'test_metrics_config_(' + str(self.args.bert_hidden_units) + ', ' + str(self.args.bert_num_blocks) + ', ' + str(self.args.bert_num_heads) + ', ' + str(self.args.train_batch_size) + ', ' + str(self.args.bert_dropout) + ', ' + str(self.args.bert_mask_prob) + ', ' + str(self.args.skew_power) + ')_rep_' + str(self.args.rep) + '.json'), 'w') as f:
+    #             json.dump(self.average_metrics, f, indent=4)
+    #     else:
+    #         with open(os.path.join(self.export_root, 'logs', 'test_metrics_iter_' + str(self.args.iteration) + '.json'),
+    #                   'w') as f:
+    #             json.dump(self.average_metrics, f, indent=4)
 
     def _create_optimizer(self):
         args = self.args
@@ -318,31 +318,31 @@ class AbstractTrainer(metaclass=ABCMeta):
         else:
             raise ValueError
 
-    def _create_loggers(self):
-        root = Path(self.export_root)
-        writer = SummaryWriter(root.joinpath('logs'))
-        model_checkpoint = root.joinpath('models')
-
-        train_loggers = [
-            MetricGraphPrinter(writer, key='epoch', graph_name='Epoch', group_name='Train'),
-            MetricGraphPrinter(writer, key='loss', graph_name='Loss', group_name='Train'),
-        ]
-
-        val_loggers = []
-        for k in self.metric_ks:
-            val_loggers.append(
-                MetricGraphPrinter(writer, key='NDCG@%d' % k, graph_name='NDCG@%d' % k, group_name='Validation'))
-            val_loggers.append(
-                MetricGraphPrinter(writer, key='Recall@%d' % k, graph_name='Recall@%d' % k, group_name='Validation'))
-        val_loggers.append(RecentModelLogger(model_checkpoint))
-        val_loggers.append(BestModelLogger(model_checkpoint, metric_key=self.best_metric))
-        return writer, train_loggers, val_loggers
-
-    def _create_state_dict(self):
-        return {
-            STATE_DICT_KEY: self.model.module.state_dict() if self.is_parallel else self.model.state_dict(),
-            OPTIMIZER_STATE_DICT_KEY: self.optimizer.state_dict(),
-        }
+    # def _create_loggers(self):
+    #     root = Path(self.export_root)
+    #     writer = SummaryWriter(root.joinpath('logs'))
+    #     model_checkpoint = root.joinpath('models')
+    #
+    #     train_loggers = [
+    #         MetricGraphPrinter(writer, key='epoch', graph_name='Epoch', group_name='Train'),
+    #         MetricGraphPrinter(writer, key='loss', graph_name='Loss', group_name='Train'),
+    #     ]
+    #
+    #     val_loggers = []
+    #     for k in self.metric_ks:
+    #         val_loggers.append(
+    #             MetricGraphPrinter(writer, key='NDCG@%d' % k, graph_name='NDCG@%d' % k, group_name='Validation'))
+    #         val_loggers.append(
+    #             MetricGraphPrinter(writer, key='Recall@%d' % k, graph_name='Recall@%d' % k, group_name='Validation'))
+    #     val_loggers.append(RecentModelLogger(model_checkpoint))
+    #     val_loggers.append(BestModelLogger(model_checkpoint, metric_key=self.best_metric))
+    #     return writer, train_loggers, val_loggers
+    #
+    # def _create_state_dict(self):
+    #     return {
+    #         STATE_DICT_KEY: self.model.module.state_dict() if self.is_parallel else self.model.state_dict(),
+    #         OPTIMIZER_STATE_DICT_KEY: self.optimizer.state_dict(),
+    #     }
 
     def _needs_to_log(self, accum_iter):
         return accum_iter % self.log_period_as_iter < self.args.train_batch_size and accum_iter != 0
