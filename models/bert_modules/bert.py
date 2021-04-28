@@ -1,6 +1,5 @@
 import torch
 from torch import nn as nn
-
 from models.bert_modules.embedding import BERTEmbedding
 from models.bert_modules.transformer import TransformerBlock
 from utils import fix_random_seed_as
@@ -12,7 +11,6 @@ class BERT(nn.Module):
 
         fix_random_seed_as(args.model_init_seed)
         # self.init_weights()
-
         self.max_len = args.bert_max_len
         item_count = args.item_count
         n_layers = args.bert_num_blocks

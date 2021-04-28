@@ -14,10 +14,6 @@ class Attention(nn.Module):
         scores = torch.matmul(query, key.transpose(-2, -1)) \
                  / math.sqrt(query.size(-1))
 
-        # Apply temporal propensity encoding
-        #temp_prop_enc = temp_prop_enc.repeat(1, scores.shape[1] * scores.shape[2]).view(scores.shape)
-        #scores = scores * temp_prop_enc
-
         if mask is not None:
             scores = scores.masked_fill(mask == 0, -1e9)
 

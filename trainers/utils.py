@@ -1,37 +1,14 @@
 import torch
 import numpy as np
 import sys
-#from itertools import combinations
 import pandas as pd
 import os
 from sklearn.metrics import roc_auc_score
 
 
-#def recall(scores, labels, k):
-#    scores = scores
-#    labels = labels
-#    rank = (-scores).argsort(dim=1)
-#    cut = rank[:, :k]
-#    hit = labels.gather(1, cut)
-#    return (hit.sum(1).float() / torch.min(torch.Tensor([k]).to(hit.device), labels.sum(1).float())).mean().cpu().item()
-
-
-#def ndcg(scores, labels, k):
-#    scores = scores.cpu()
-#    labels = labels.cpu()
-#    rank = (-scores).argsort(dim=1)
-#    cut = rank[:, :k]
-#    hits = labels.gather(1, cut)
-#    position = torch.arange(2, 2+k)
-#    weights = 1 / torch.log2(position.float())
-#    dcg = (hits.float() * weights).sum(1)
-#    idcg = torch.Tensor([weights[:min(int(n), k)].sum() for n in labels.sum(1)])
-#    ndcg = dcg / idcg
-#    return ndcg.mean()
-
 def recall(hits, labels, k):
-    return hits.sum(1).mean().cpu().item()
     #return (hits.sum(1) / torch.min(torch.Tensor([k]).to(labels.device), labels.sum(1).float())).mean().cpu().item()
+    return hits.sum(1).mean().cpu().item()
 
 
 def ndcg(hits, labels, k):
