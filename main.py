@@ -54,11 +54,9 @@ def train_tf():
         args.best_metric = 'AUC'
     elif args.tf_target == 'relevance':
         args.best_metric = 'MSE'
-    train_loader, val_loader, test_loader, train_temporal_popularity, train_popularity_loader, val_popularity_loader, test_popularity_loader = dataloader_factory(args)
+    train_loader, val_loader, test_loader = dataloader_factory(args)
     model = model_factory(args)
-    trainer = trainer_factory(args, model, train_loader, val_loader, test_loader, train_temporal_popularity,
-                              train_popularity_loader, val_popularity_loader,
-                              test_popularity_loader)
+    trainer = trainer_factory(args, model, train_loader, val_loader, test_loader)
     trainer.train()
     trainer.test()
     trainer.save_test_performance()
@@ -92,24 +90,22 @@ def generate_semi_synthetic():
         args.best_metric = 'AUC'
     elif args.tf_target == 'relevance':
         args.best_metric = 'MSE'
-    train_loader, val_loader, test_loader, gen_loader, train_temporal_popularity, train_popularity_loader, val_popularity_loader, test_popularity_loader = dataloader_factory(args)
+    train_loader, val_loader, test_loader, gen_loader = dataloader_factory(args)
     model = model_factory(args)
-    trainer = trainer_factory(args, model, train_loader, val_loader, test_loader, train_temporal_popularity,
-                              train_popularity_loader, val_popularity_loader,
-                              test_popularity_loader)
+    trainer = trainer_factory(args, model, train_loader, val_loader, test_loader)
     trainer.train()
     trainer.reconstruct(gen_loader)
 
 
 def train_bert_semi_synthetic():
+    args.iteration += 1
     args.model_code, args.dataloader_code, args.trainer_code = 'bert', 'bert', 'bert'
     train_loader, val_loader, test_loader, temporal_propensity, temporal_relevance, static_propensity = dataloader_factory(args)
     model = model_factory(args)
-    #trainer = trainer_factory(args, model, train_loader, val_loader, test_loader, temporal_propensity_dataloader,
-    #                          static_propensity_dataloader, static_propensity_dataloader,
-    #                          static_propensity_dataloader)
-    #trainer.train()
-    #trainer.test()
+    trainer = trainer_factory(args, model, train_loader, val_loader, test_loader, temporal_propensity=temporal_propensity, temporal_relevance=temporal_relevance, static_propensity=static_propensity)
+    trainer.train()
+    trainer.test()
+    trainer.final_data_eval_save_results()
 
 
 if __name__ == '__main__':

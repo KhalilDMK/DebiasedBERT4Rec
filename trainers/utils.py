@@ -54,7 +54,7 @@ def auc_score(p, q):
     return roc_auc_score(q.tolist(), p.tolist(), labels=[0, 1])
 
 
-def metrics_for_ks(scores, labels, candidates, ks, popularity_vector, item_similarity_matrix):
+def metrics_for_ks(args, scores, labels, candidates, ks, popularity_vector, item_similarity_matrix):
     metrics = {}
 
     labels_float = labels.float()
@@ -66,9 +66,10 @@ def metrics_for_ks(scores, labels, candidates, ks, popularity_vector, item_simil
         hits = labels_float.gather(1, cut)
         metrics['Recall@%d' % k] = recall(hits, labels, k)
         metrics['NDCG@%d' % k] = ndcg(hits, labels, k)
-        metrics['AvgPop@%d' % k] = avg_popularity(cut_candidates, labels.device, popularity_vector)
-        metrics['EFD@%d' % k] = efd(cut_candidates, labels.device, popularity_vector)
-        metrics['Diversity@%d' % k] = avg_pairwise_similarity(cut_candidates, labels.device, item_similarity_matrix)
+        if args.mode in ['train_bert_real', 'tune_bert_real', 'loop_bert_real']:
+            metrics['AvgPop@%d' % k] = avg_popularity(cut_candidates, labels.device, popularity_vector)
+            metrics['EFD@%d' % k] = efd(cut_candidates, labels.device, popularity_vector)
+            metrics['Diversity@%d' % k] = avg_pairwise_similarity(cut_candidates, labels.device, item_similarity_matrix)
 
     return metrics
 

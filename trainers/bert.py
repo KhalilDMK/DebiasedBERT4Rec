@@ -12,15 +12,17 @@ import json
 from torch.utils.tensorboard import SummaryWriter
 from config import STATE_DICT_KEY, OPTIMIZER_STATE_DICT_KEY
 from loggers import *
+import sys
 
 
 class BERTTrainer(AbstractTrainer):
-    def __init__(self, args, model, train_loader, val_loader, test_loader, train_temporal_popularity, train_popularity_loader, val_popularity_loader, test_popularity_loader):
+    def __init__(self, args, model, train_loader, val_loader, test_loader, train_temporal_popularity, train_popularity_loader, val_popularity_loader, test_popularity_loader, temporal_propensity, temporal_relevance, static_propensity):
         super().__init__(args, model, train_loader, val_loader, test_loader)
 
         self.max_len = args.bert_max_len
-        self.preprocess_real_properties(train_temporal_popularity, train_popularity_loader, val_popularity_loader,
-                                   test_popularity_loader)
+        if args.mode in ['train_bert_real', 'tune_bert_real', 'loop_bert_real']:
+            self.preprocess_real_properties(train_temporal_popularity, train_popularity_loader, val_popularity_loader,
+                                       test_popularity_loader)
         self.nll = nn.NLLLoss(ignore_index=0)
         self.log_softmax = nn.LogSoftmax(dim=1)
 
@@ -47,7 +49,10 @@ class BERTTrainer(AbstractTrainer):
             for batch_idx, batch in enumerate(tqdm_dataloader):
                 batch = [x.to(self.device) for x in batch]
 
-                metrics = self.calculate_metrics(batch, self.val_popularity_vector, self.val_item_similarity_matrix)
+                if self.args.mode in ['train_bert_real', 'tune_bert_real', 'loop_bert_real']:
+                    metrics = self.calculate_metrics(batch, self.val_popularity_vector, self.val_item_similarity_matrix)
+                if self.args.mode in ['train_bert_semi_synthetic', 'tune_bert_semi_synthetic']:
+                    metrics = self.calculate_metrics(batch)
 
                 for k, v in metrics.items():
                     average_meter_set.update(k, v)
@@ -90,7 +95,10 @@ class BERTTrainer(AbstractTrainer):
             for batch_idx, batch in enumerate(tqdm_dataloader):
                 batch = [x.to(self.device) for x in batch]
 
-                metrics = self.calculate_metrics(batch, self.test_popularity_vector, self.test_item_similarity_matrix)
+                if self.args.mode in ['train_bert_real', 'tune_bert_real', 'loop_bert_real']:
+                    metrics = self.calculate_metrics(batch, self.val_popularity_vector, self.val_item_similarity_matrix)
+                if self.args.mode in ['train_bert_semi_synthetic', 'tune_bert_semi_synthetic']:
+                    metrics = self.calculate_metrics(batch)
 
                 for k, v in metrics.items():
                     average_meter_set.update(k, v)
@@ -140,30 +148,31 @@ class BERTTrainer(AbstractTrainer):
         return recommendations.to(self.device)
 
     def final_data_eval_save_results(self):
-        data_temp_prop_bias = position_bias_in_data(self.train_temporal_popularity)
-        data_stat_prop_bias = propensity_bias_in_data(self.train_popularity_vector)
-        data_stat_prop_bias_kl_p_u = propensity_bias_in_data_kl_p_u(self.train_popularity_vector)
-        data_stat_prop_bias_kl_u_p = propensity_bias_in_data_kl_u_p(self.train_popularity_vector)
-        data_stat_prop_bias_mse = propensity_bias_in_data_mse(self.train_popularity_vector)
-        data_stat_prop_bias_mae = propensity_bias_in_data_mae(self.train_popularity_vector)
-        data_temp_expo_bias = temporal_exposure_bias_in_data(self.train_temporal_popularity)
-        data_temp_expo_bias_kl_p_u = temporal_exposure_bias_in_data_kl_p_u(self.train_temporal_popularity)
-        data_temp_expo_bias_kl_u_p = temporal_exposure_bias_in_data_kl_u_p(self.train_temporal_popularity)
-        data_temp_expo_bias_mse = temporal_exposure_bias_in_data_mse(self.train_temporal_popularity)
-        data_temp_expo_bias_mae = temporal_exposure_bias_in_data_mae(self.train_temporal_popularity)
-        ips_bias_condition = bias_relaxed_condition(self.train_temporal_popularity)
-        self.average_metrics['data_temp_prop_bias'] = float(data_temp_prop_bias)
-        self.average_metrics['data_stat_prop_bias'] = float(data_stat_prop_bias)
-        self.average_metrics['data_stat_prop_bias_kl_p_u'] = float(data_stat_prop_bias_kl_p_u)
-        self.average_metrics['data_stat_prop_bias_kl_u_p'] = float(data_stat_prop_bias_kl_u_p)
-        self.average_metrics['data_stat_prop_bias_mse'] = float(data_stat_prop_bias_mse)
-        self.average_metrics['data_stat_prop_bias_mae'] = float(data_stat_prop_bias_mae)
-        self.average_metrics['data_temp_expo_bias'] = float(data_temp_expo_bias)
-        self.average_metrics['data_temp_expo_bias_kl_p_u'] = float(data_temp_expo_bias_kl_p_u)
-        self.average_metrics['data_temp_expo_bias_kl_u_p'] = float(data_temp_expo_bias_kl_u_p)
-        self.average_metrics['data_temp_expo_bias_mse'] = float(data_temp_expo_bias_mse)
-        self.average_metrics['data_temp_expo_bias_mae'] = float(data_temp_expo_bias_mae)
-        self.average_metrics['ips_bias_condition'] = float(ips_bias_condition)
+        if self.args.mode in ['train_bert_real', 'tune_bert_real', 'loop_bert_real']:
+            data_temp_prop_bias = position_bias_in_data(self.train_temporal_popularity)
+            data_stat_prop_bias = propensity_bias_in_data(self.train_popularity_vector)
+            data_stat_prop_bias_kl_p_u = propensity_bias_in_data_kl_p_u(self.train_popularity_vector)
+            data_stat_prop_bias_kl_u_p = propensity_bias_in_data_kl_u_p(self.train_popularity_vector)
+            data_stat_prop_bias_mse = propensity_bias_in_data_mse(self.train_popularity_vector)
+            data_stat_prop_bias_mae = propensity_bias_in_data_mae(self.train_popularity_vector)
+            data_temp_expo_bias = temporal_exposure_bias_in_data(self.train_temporal_popularity)
+            data_temp_expo_bias_kl_p_u = temporal_exposure_bias_in_data_kl_p_u(self.train_temporal_popularity)
+            data_temp_expo_bias_kl_u_p = temporal_exposure_bias_in_data_kl_u_p(self.train_temporal_popularity)
+            data_temp_expo_bias_mse = temporal_exposure_bias_in_data_mse(self.train_temporal_popularity)
+            data_temp_expo_bias_mae = temporal_exposure_bias_in_data_mae(self.train_temporal_popularity)
+            ips_bias_condition = bias_relaxed_condition(self.train_temporal_popularity)
+            self.average_metrics['data_temp_prop_bias'] = float(data_temp_prop_bias)
+            self.average_metrics['data_stat_prop_bias'] = float(data_stat_prop_bias)
+            self.average_metrics['data_stat_prop_bias_kl_p_u'] = float(data_stat_prop_bias_kl_p_u)
+            self.average_metrics['data_stat_prop_bias_kl_u_p'] = float(data_stat_prop_bias_kl_u_p)
+            self.average_metrics['data_stat_prop_bias_mse'] = float(data_stat_prop_bias_mse)
+            self.average_metrics['data_stat_prop_bias_mae'] = float(data_stat_prop_bias_mae)
+            self.average_metrics['data_temp_expo_bias'] = float(data_temp_expo_bias)
+            self.average_metrics['data_temp_expo_bias_kl_p_u'] = float(data_temp_expo_bias_kl_p_u)
+            self.average_metrics['data_temp_expo_bias_kl_u_p'] = float(data_temp_expo_bias_kl_u_p)
+            self.average_metrics['data_temp_expo_bias_mse'] = float(data_temp_expo_bias_mse)
+            self.average_metrics['data_temp_expo_bias_mae'] = float(data_temp_expo_bias_mae)
+            self.average_metrics['ips_bias_condition'] = float(ips_bias_condition)
         if self.args.mode in ['tune_bert_real', 'tune_bert_semi_synthetic', 'tune_tf']:
             with open(os.path.join(self.export_root, 'logs', 'test_metrics_config_(' + str(self.args.bert_hidden_units) + ', ' + str(self.args.bert_num_blocks) + ', ' + str(self.args.bert_num_heads) + ', ' + str(self.args.train_batch_size) + ', ' + str(self.args.bert_dropout) + ', ' + str(self.args.bert_mask_prob) + ', ' + str(self.args.skew_power) + ')_rep_' + str(self.args.rep) + '.json'), 'w') as f:
                 json.dump(self.average_metrics, f, indent=4)
@@ -217,13 +226,13 @@ class BERTTrainer(AbstractTrainer):
 
         return loss
 
-    def calculate_metrics(self, batch, popularity_vector, item_similarity_matrix):
+    def calculate_metrics(self, batch, popularity_vector=[], item_similarity_matrix=[]):
         seqs, candidates, labels = batch
         scores = self.model(seqs)  # B x T x V
         scores = scores[:, -1, :]  # B x V
         scores = scores.gather(1, candidates)  # B x C
 
-        metrics = metrics_for_ks(scores, labels, candidates, self.metric_ks, popularity_vector, item_similarity_matrix)
+        metrics = metrics_for_ks(self.args, scores, labels, candidates, self.metric_ks, popularity_vector, item_similarity_matrix)
         return metrics
 
     def preprocess_real_properties(self, train_temporal_popularity, train_popularity_loader, val_popularity_loader, test_popularity_loader):
