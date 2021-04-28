@@ -1,8 +1,6 @@
 from .base import AbstractTrainer
 from .utils import metrics_for_ks
-#import torch
 import torch.nn as nn
-#import sys
 from utils import AverageMeterSet
 from tqdm import tqdm
 import pickle
@@ -21,45 +19,8 @@ class BERTTrainer(AbstractTrainer):
         super().__init__(args, model, train_loader, val_loader, test_loader)
 
         self.max_len = args.bert_max_len
-
         self.preprocess_real_properties(train_temporal_popularity, train_popularity_loader, val_popularity_loader,
                                    test_popularity_loader)
-
-        #self.pos_dist = train_temporal_popularity.to(self.device)
-        #self.pos_dist = torch.cat((torch.zeros(1, self.max_len).to(self.device), self.pos_dist),
-        #                          0) + sys.float_info.epsilon
-
-        #self.train_popularity_vector = train_popularity_loader.popularity_vector.to(self.device)
-        #self.train_popularity_vector = torch.cat(
-        #    (torch.FloatTensor([0]).to(self.device), self.train_popularity_vector)) + sys.float_info.epsilon
-
-        #self.train_item_similarity_matrix = train_popularity_loader.item_similarity_matrix.to(self.device)
-        #self.train_item_similarity_matrix = torch.cat((torch.zeros(1, self.train_item_similarity_matrix.shape[1]).to(
-        #    self.device), self.train_item_similarity_matrix), 0)
-        #self.train_item_similarity_matrix = torch.cat((torch.zeros(self.train_item_similarity_matrix.shape[0], 1).to(
-        #    self.device), self.train_item_similarity_matrix), 1)
-
-        #self.val_popularity_vector = val_popularity_loader.popularity_vector.to(self.device)
-        #self.val_popularity_vector = torch.cat(
-        #    (torch.FloatTensor([0]).to(self.device), self.val_popularity_vector)) + sys.float_info.epsilon
-
-        #self.val_item_similarity_matrix = val_popularity_loader.item_similarity_matrix.to(self.device)
-        #self.val_item_similarity_matrix = torch.cat((torch.zeros(1, self.val_item_similarity_matrix.shape[1]).to(
-        #    self.device), self.val_item_similarity_matrix), 0)
-        #self.val_item_similarity_matrix = torch.cat((torch.zeros(self.val_item_similarity_matrix.shape[0], 1).to(
-        #    self.device), self.val_item_similarity_matrix), 1)
-
-        #self.test_popularity_vector = test_popularity_loader.popularity_vector.to(self.device)
-        #self.test_popularity_vector = torch.cat(
-        #    (torch.FloatTensor([0]).to(self.device), self.test_popularity_vector)) + sys.float_info.epsilon
-
-        #self.test_item_similarity_matrix = test_popularity_loader.item_similarity_matrix.to(self.device)
-        #self.test_item_similarity_matrix = torch.cat((torch.zeros(1, self.test_item_similarity_matrix.shape[1]).to(
-        #    self.device), self.test_item_similarity_matrix), 0)
-        #self.test_item_similarity_matrix = torch.cat((torch.zeros(self.test_item_similarity_matrix.shape[0], 1).to(
-        #    self.device), self.test_item_similarity_matrix), 1)
-
-        #self.ce = nn.CrossEntropyLoss(ignore_index=0)
         self.nll = nn.NLLLoss(ignore_index=0)
         self.log_softmax = nn.LogSoftmax(dim=1)
 
@@ -144,8 +105,6 @@ class BERTTrainer(AbstractTrainer):
                 tqdm_dataloader.set_description(description)
 
             self.average_metrics = average_meter_set.averages()
-            #with open(os.path.join(self.export_root, 'logs', 'test_metrics_iter_' + str(self.args.iteration) + '.json'), 'w') as f:
-            #    json.dump(self.average_metrics, f, indent=4)
             print(self.average_metrics)
 
     def recommend(self):
@@ -154,7 +113,6 @@ class BERTTrainer(AbstractTrainer):
         self.model.load_state_dict(best_model)
         self.model.eval()
         recommendations = None
-        recommendation_positions = None
         softmax = nn.Softmax(dim=1)
         with torch.no_grad():
             tqdm_dataloader = tqdm(self.test_loader)
@@ -167,14 +125,11 @@ class BERTTrainer(AbstractTrainer):
                 train_batch_indices, train_item_indices = self.get_indices_to_ignore(seqs, num_items)
                 scores = softmax(scores)
                 scores[train_batch_indices, train_item_indices] = float('-inf')
-                #batch_recommendations = torch.argmax(scores, dim=1)
                 batch_recommendations = self.generate_batch_recommendations(seqs, scores)
                 if recommendations == None:
                     recommendations = batch_recommendations
-                    #recommendation_positions = torch.Tensor([len([i for i in x if i != 0]) - 1 for x in seqs])
                 else:
                     recommendations = torch.cat((recommendations, batch_recommendations))
-                    #recommendation_positions = torch.cat((recommendation_positions, torch.tensor([len([i for i in x if i != 0]) - 1 for x in seqs])))
         if self.args.mode in ['tune_bert_real', 'tune_bert_semi_synthetic', 'tune_tf']:
             with Path(self.export_root).joinpath('recommendations', 'rec_config_(' + str(self.args.bert_hidden_units) + ', ' + str(self.args.bert_num_blocks) + ', ' + str(self.args.bert_num_heads) + ', ' + str(self.args.bert_dropout) + ', ' + str(self.args.bert_mask_prob) + ', ' + str(self.args.skew_power) + ')_rep_' + str(self.args.rep) + '.pkl').open('wb') as f:
                 pickle.dump(recommendations.tolist(), f)
@@ -182,27 +137,9 @@ class BERTTrainer(AbstractTrainer):
             with Path(self.export_root).joinpath('recommendations', 'rec_iter_' + str(self.args.iteration) + '.pkl').open('wb') as f:
                 pickle.dump(recommendations.tolist(), f)
         print('recommendations: ' + str(recommendations))
-        #print('recommendation positions: ' + str(recommendation_positions))
-        #return recommendations.to(self.device), recommendation_positions.to(self.device)
         return recommendations.to(self.device)
 
     def final_data_eval_save_results(self):
-        #print('Position Bias Evaluation...')
-        #test_items = None
-        #with torch.no_grad():
-        #    tqdm_dataloader = tqdm(self.test_loader)
-        #    for batch_idx, batch in enumerate(tqdm_dataloader):
-        #        batch = [x.to(self.device) for x in batch]
-        #        seqs, candidates, labels = batch
-        #        if test_items == None:
-        #            test_items = candidates[:, 0]
-        #        else:
-        #            test_items = torch.cat((test_items, candidates[:, 0]))
-        #temp_prop_rec = positional_frequency(recommendations.cpu().numpy(), recommendation_positions.cpu().numpy(),
-        #                         self.train_temporal_popularity.cpu().numpy())
-        #temp_prop_test = positional_frequency(test_items.cpu().numpy(), recommendation_positions.cpu().numpy(),
-        #                         self.train_temporal_popularity.cpu().numpy())
-        #model_temp_prop_bias = temp_prop_rec - temp_prop_test
         data_temp_prop_bias = position_bias_in_data(self.train_temporal_popularity)
         data_stat_prop_bias = propensity_bias_in_data(self.train_popularity_vector)
         data_stat_prop_bias_kl_p_u = propensity_bias_in_data_kl_p_u(self.train_popularity_vector)
@@ -215,9 +152,6 @@ class BERTTrainer(AbstractTrainer):
         data_temp_expo_bias_mse = temporal_exposure_bias_in_data_mse(self.train_temporal_popularity)
         data_temp_expo_bias_mae = temporal_exposure_bias_in_data_mae(self.train_temporal_popularity)
         ips_bias_condition = bias_relaxed_condition(self.train_temporal_popularity)
-        #self.average_metrics['temp_prop_rec'] = float(temp_prop_rec)
-        #self.average_metrics['temp_prop_test'] = float(temp_prop_test)
-        #self.average_metrics['model_temp_prop_bias'] = float(model_temp_prop_bias)
         self.average_metrics['data_temp_prop_bias'] = float(data_temp_prop_bias)
         self.average_metrics['data_stat_prop_bias'] = float(data_stat_prop_bias)
         self.average_metrics['data_stat_prop_bias_kl_p_u'] = float(data_stat_prop_bias_kl_p_u)
@@ -230,12 +164,6 @@ class BERTTrainer(AbstractTrainer):
         self.average_metrics['data_temp_expo_bias_mse'] = float(data_temp_expo_bias_mse)
         self.average_metrics['data_temp_expo_bias_mae'] = float(data_temp_expo_bias_mae)
         self.average_metrics['ips_bias_condition'] = float(ips_bias_condition)
-        #print('Average training positional frequency of recommendations: ' + str(temp_prop_rec))
-        #print('Average training positional frequency of test items: ' + str(temp_prop_test))
-        #print('Model temporal propensity bias: ' + str(model_temp_prop_bias))
-        #print('Average Position Matching of Recommendations with Top 1 Training Positions: ' + str(
-        #    top_position_matching(recommendations.cpu().numpy(), recommendation_positions.cpu().numpy(),
-        #                          position_distributions[:].cpu().numpy())))
         if self.args.mode in ['tune_bert_real', 'tune_bert_semi_synthetic', 'tune_tf']:
             with open(os.path.join(self.export_root, 'logs', 'test_metrics_config_(' + str(self.args.bert_hidden_units) + ', ' + str(self.args.bert_num_blocks) + ', ' + str(self.args.bert_num_heads) + ', ' + str(self.args.train_batch_size) + ', ' + str(self.args.bert_dropout) + ', ' + str(self.args.bert_mask_prob) + ', ' + str(self.args.skew_power) + ')_rep_' + str(self.args.rep) + '.json'), 'w') as f:
                 json.dump(self.average_metrics, f, indent=4)
@@ -273,15 +201,9 @@ class BERTTrainer(AbstractTrainer):
     def calculate_loss(self, batch, model_code):
         seqs, labels = batch
         batch_size = labels.shape[0]
-        #temp_prop_enc = torch.cat(
-        #    [self.pos_dist[seqs[i].cpu(), range(seqs.shape[1])].view(-1, self.max_len) for i in range(seqs.shape[0])], 0)
-        #temp_prop_enc = torch.cat(
-        #    [self.pos_dist[labels[i].cpu(), range(labels.shape[1])].view(-1, self.max_len) for i in range(labels.shape[0])],
-        #    0)
         logits = self.model(seqs)  # B x T x V
         logits = logits.view(-1, logits.size(-1))  # (B*T) x V
         labels = labels.view(-1)  # B*T
-        #loss = self.ce(logits, labels)
         logits = self.log_softmax(logits)
         if self.args.loss_debiasing == 'temporal_popularity':
             temp_prop_enc = self.train_temporal_popularity[
@@ -328,7 +250,3 @@ class BERTTrainer(AbstractTrainer):
         item_similarity_matrix = torch.cat((torch.zeros(1, item_similarity_matrix.shape[1]).to(self.device), item_similarity_matrix), 0)
         item_similarity_matrix = torch.cat((torch.zeros(item_similarity_matrix.shape[0], 1).to(self.device), item_similarity_matrix), 1)
         return item_similarity_matrix
-
-
-
-

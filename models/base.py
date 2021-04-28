@@ -12,4 +12,3 @@ class BaseModel(nn.Module, metaclass=ABCMeta):
     @abstractmethod
     def code(cls):
         pass
-

@@ -6,8 +6,6 @@ import torch.utils.data as data_utils
 class TFDataloader(AbstractDataloader):
     def __init__(self, args, dataset):
         super().__init__(args, dataset)
-        #self.args.user_count = len(self.umap)
-        #self.args.item_count = len(self.smap)
         self.max_len = args.bert_max_len
 
     @classmethod

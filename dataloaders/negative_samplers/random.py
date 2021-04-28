@@ -30,13 +30,5 @@ class RandomNegativeSampler(AbstractNegativeSampler):
                 sampling_set = set(range(1, self.item_count + 1)) - seen
             assert len(sampling_set) >= self.sample_size, 'Not enough items to sample from.'
             samples = random.sample(sampling_set, self.sample_size)
-            #samples = []
-            #for _ in range(self.sample_size):
-            #    item = np.random.choice(self.item_count) + 1
-            #    while item in seen or item in samples:
-            #        item = np.random.choice(self.item_count) + 1
-            #    samples.append(item)
-
             negative_samples[user] = samples
-
         return negative_samples

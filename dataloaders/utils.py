@@ -1,6 +1,5 @@
 import numpy as np
 import torch
-import sys
 
 
 def position_bias_in_data(position_distributions):
@@ -76,7 +75,6 @@ def bias_relaxed_condition(position_distributions):
 
 
 def kl_divergence(p, q):
-    #return (p * torch.log2(p / q + sys.float_info.epsilon)).sum()
     return (p * torch.log2(p / q)).sum()
 
 

@@ -7,12 +7,6 @@ class AbstractDataloader(metaclass=ABCMeta):
         self.args = args
         seed = args.dataloader_random_seed
         self.rng = random.Random(seed)
-        #self.semi_synthetic = 'real'
-        #if args.dataloader_code == 'tf':
-        #    self.semi_synthetic = 'generate'
-        #elif args.mode == 'train_semi_synthetic':
-        #    self.semi_synthetic = 'train'
-        #self.save_folder = dataset._get_preprocessed_folder_path()
         dataset = dataset.load_dataset()
         self.train = dataset['train']
         self.val = dataset['val']
