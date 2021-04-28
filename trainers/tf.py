@@ -1,62 +1,53 @@
 from .base import AbstractTrainer
 from .utils import metrics_for_ks_explicit, save_reconstructed
 
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import sys
+#import torch
+#import torch.nn as nn
+#import torch.optim as optim
+#import sys
 
 from loggers import *
 from config import STATE_DICT_KEY, OPTIMIZER_STATE_DICT_KEY
 from utils import AverageMeterSet
-from dataloaders.utils import *
+#from dataloaders.utils import *
 
 import torch
 import torch.nn as nn
-import torch.optim as optim
+#import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 import json
-from abc import *
 from pathlib import Path
-from trainers.utils import positional_frequency, top_position_matching
-import pickle
-import random
-import sys
-import pandas as pd
 
 
-class TFTrainer():
-    def __init__(self, args, model, train_loader, val_loader, test_loader, export_root, pos_dist, train_popularity_vector_loader, val_popularity_vector_loader, test_popularity_vector_loader):
-        #super().__init__(args, model, train_loader, val_loader, test_loader, export_root, pos_dist, train_popularity_vector_loader, val_popularity_vector_loader, test_popularity_vector_loader)
-        #self.ce = nn.CrossEntropyLoss(ignore_index=0)
-        #self.nll = nn.NLLLoss(ignore_index=0)
-        #self.log_softmax = nn.LogSoftmax(dim=1)
+class TFTrainer(AbstractTrainer):
+    def __init__(self, args, model, train_loader, val_loader, test_loader, train_temporal_popularity, train_popularity_loader, val_popularity_loader, test_popularity_loader):
+        super().__init__(args, model, train_loader, val_loader, test_loader)
 
-        self.args = args
-        self.device = args.device
-        self.model = model.to(self.device)
-        self.is_parallel = args.num_gpu > 1
-        if self.is_parallel:
-            self.model = nn.DataParallel(self.model)
+        #self.args = args
+        #self.device = args.device
+        #self.model = model.to(self.device)
+        #self.is_parallel = args.num_gpu > 1
+        #if self.is_parallel:
+        #    self.model = nn.DataParallel(self.model)
 
-        self.train_loader = train_loader
-        self.val_loader = val_loader
-        self.test_loader = test_loader
-        self.optimizer = self._create_optimizer()
-        if args.enable_lr_schedule:
-            self.lr_scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=args.decay_step, gamma=args.gamma)
+        #self.train_loader = train_loader
+        #self.val_loader = val_loader
+        #self.test_loader = test_loader
+        #self.optimizer = self._create_optimizer()
+        #if args.enable_lr_schedule:
+        #    self.lr_scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=args.decay_step, gamma=args.gamma)
 
-        self.num_epochs = args.num_epochs
-        self.metric_ks = args.metric_ks
-        self.best_metric = args.best_metric
+        #self.num_epochs = args.num_epochs
+        #self.metric_ks = args.metric_ks
+        #self.best_metric = args.best_metric
 
-        self.export_root = export_root
-        self.writer, self.train_loggers, self.val_loggers = self._create_loggers()
-        self.add_extra_loggers()
-        self.logger_service = LoggerService(self.train_loggers, self.val_loggers)
-        self.log_period_as_iter = args.log_period_as_iter
+        #self.export_root = self.args.export_root
+        #self.writer, self.train_loggers, self.val_loggers = self._create_loggers()
+        #self.add_extra_loggers()
+        #self.logger_service = LoggerService(self.train_loggers, self.val_loggers)
+        #self.log_period_as_iter = args.log_period_as_iter
 
         self.mse = nn.MSELoss()
         self.ce = nn.BCELoss()
@@ -74,53 +65,53 @@ class TFTrainer():
     def log_extra_val_info(self, log_data):
         pass
 
-    def train(self):
-        accum_iter = 0
-        self.validate(0, accum_iter)
-        for epoch in range(self.num_epochs):
-            accum_iter = self.train_one_epoch(epoch, accum_iter)
-            self.validate(epoch, accum_iter)
-        self.logger_service.complete({
-            'state_dict': (self._create_state_dict()),
-        })
-        self.writer.close()
+    #def train(self):
+    #    accum_iter = 0
+    #    self.validate(0, accum_iter)
+    #    for epoch in range(self.num_epochs):
+    #        accum_iter = self.train_one_epoch(epoch, accum_iter)
+    #        self.validate(epoch, accum_iter)
+    #    self.logger_service.complete({
+    #        'state_dict': (self._create_state_dict()),
+    #    })
+    #    self.writer.close()
 
-    def train_one_epoch(self, epoch, accum_iter):
-        self.model.train()
-        if self.args.enable_lr_schedule:
-            self.lr_scheduler.step()
+    #def train_one_epoch(self, epoch, accum_iter):
+    #    self.model.train()
+    #    if self.args.enable_lr_schedule:
+    #        self.lr_scheduler.step()
 
-        average_meter_set = AverageMeterSet()
-        tqdm_dataloader = tqdm(self.train_loader)
+    #    average_meter_set = AverageMeterSet()
+    #    tqdm_dataloader = tqdm(self.train_loader)
 
-        for batch_idx, batch in enumerate(tqdm_dataloader):
-            batch_size = batch[0].size(0)
-            batch = [x.to(self.device) for x in batch]
+    #    for batch_idx, batch in enumerate(tqdm_dataloader):
+    #        batch_size = batch[0].size(0)
+    #        batch = [x.to(self.device) for x in batch]
 
-            self.optimizer.zero_grad()
-            loss = self.calculate_loss(batch, self.args.model_code)
-            loss.backward()
+    #        self.optimizer.zero_grad()
+    #        loss = self.calculate_loss(batch, self.args.model_code)
+    #        loss.backward()
 
-            self.optimizer.step()
+    #        self.optimizer.step()
 
-            average_meter_set.update('loss', loss.item())
-            tqdm_dataloader.set_description(
-                'Epoch {}, loss {:.3f} '.format(epoch+1, average_meter_set['loss'].avg))
+    #        average_meter_set.update('loss', loss.item())
+    #        tqdm_dataloader.set_description(
+    #            'Epoch {}, loss {:.3f} '.format(epoch+1, average_meter_set['loss'].avg))
 
-            accum_iter += batch_size
+    #        accum_iter += batch_size
 
-            if self._needs_to_log(accum_iter):
-                tqdm_dataloader.set_description('Logging to Tensorboard')
-                log_data = {
-                    'state_dict': (self._create_state_dict()),
-                    'epoch': epoch+1,
-                    'accum_iter': accum_iter,
-                }
-                log_data.update(average_meter_set.averages())
-                self.log_extra_train_info(log_data)
-                self.logger_service.log_train(log_data)
+    #        if self._needs_to_log(accum_iter):
+    #            tqdm_dataloader.set_description('Logging to Tensorboard')
+    #            log_data = {
+    #                'state_dict': (self._create_state_dict()),
+    #                'epoch': epoch+1,
+    #                'accum_iter': accum_iter,
+    #            }
+    #            log_data.update(average_meter_set.averages())
+    #            self.log_extra_train_info(log_data)
+    #            self.logger_service.log_train(log_data)
 
-        return accum_iter
+    #    return accum_iter
 
     def validate(self, epoch, accum_iter):
         self.model.eval()
@@ -192,7 +183,7 @@ class TFTrainer():
 
     def save_test_performance(self):
         print('Saving test performance...')
-        if self.args.mode == 'tune':
+        if self.args.mode in ['tune_bert_real', 'tune_bert_semi_synthetic', 'tune_tf']:
             with open(os.path.join(self.export_root, 'logs', 'test_metrics_config_(' + str(self.args.bert_hidden_units) + ', ' + str(self.args.train_batch_size) + ')_rep_' + str(self.args.rep) + '.json'), 'w') as f:
                 json.dump(self.average_metrics, f, indent=4)
         else:
@@ -224,14 +215,14 @@ class TFTrainer():
             score_type = 'rating'
         save_reconstructed([gen_seqs.tolist(), gen_items.tolist(), gen_times.tolist(), gen_score.tolist()], score_type, self.args.data_root)
 
-    def _create_optimizer(self):
-        args = self.args
-        if args.optimizer.lower() == 'adam':
-            return optim.Adam(self.model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-        elif args.optimizer.lower() == 'sgd':
-            return optim.SGD(self.model.parameters(), lr=args.lr, weight_decay=args.weight_decay, momentum=args.momentum)
-        else:
-            raise ValueError
+    # def _create_optimizer(self):
+    #     args = self.args
+    #     if args.optimizer.lower() == 'adam':
+    #         return optim.Adam(self.model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    #     elif args.optimizer.lower() == 'sgd':
+    #         return optim.SGD(self.model.parameters(), lr=args.lr, weight_decay=args.weight_decay, momentum=args.momentum)
+    #     else:
+    #         raise ValueError
 
     def _create_loggers(self):
         root = Path(self.export_root)
@@ -262,8 +253,8 @@ class TFTrainer():
             OPTIMIZER_STATE_DICT_KEY: self.optimizer.state_dict(),
         }
 
-    def _needs_to_log(self, accum_iter):
-        return accum_iter % self.log_period_as_iter < self.args.train_batch_size and accum_iter != 0
+    # def _needs_to_log(self, accum_iter):
+    #     return accum_iter % self.log_period_as_iter < self.args.train_batch_size and accum_iter != 0
 
     def calculate_loss(self, batch, model_code):
         seqs, items, times, ratings = batch

@@ -1,12 +1,10 @@
 from config import *
-
 import json
 import os
 import pprint as pp
 import random
 from datetime import date
 from pathlib import Path
-
 import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
@@ -156,6 +154,15 @@ def summarize_tuning_results(export_root, hyperparameters):
             results[metric][frame_idx] = result[metric]
         frame_idx += 1
     results.to_csv(log_path.joinpath('results.csv'))
+
+
+def verify_loss_debiasing(args):
+    if args.mode in ['train_bert_real', 'tune_bert_real', 'loop_bert_real']:
+        assert args.loss_debiasing in [None, 'static_popularity', 'temporal_popularity'], \
+            "Invalid 'loss_debiasing' argument for the mode. Pick one of [None, 'static_popularity', 'temporal_popularity']."
+    if args.mode in [None, 'train_bert_semi_synthetic', 'tune_bert_semi_synthetic']:
+        assert args.loss_debiasing in [None, 'static_propensity', 'temporal_propensity', 'relevance'], \
+            "Invalid 'loss_debiasing' argument for the mode. Pick one of [None, 'static_propensity', 'temporal_propensity', 'relevance']."
 
 
 class AverageMeterSet(object):

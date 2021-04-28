@@ -1,11 +1,9 @@
 from .utils import *
 from config import RAW_DATASET_ROOT_FOLDER
-
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 tqdm.pandas()
-
 from abc import *
 from pathlib import Path
 import os
@@ -18,13 +16,13 @@ import random
 
 
 class AbstractDataset(metaclass=ABCMeta):
-    def __init__(self, args, export_root):
+    def __init__(self, args):
         self.args = args
         self.min_rating = args.min_rating
         self.min_uc = args.min_uc
         self.min_sc = args.min_sc
         self.split = args.split
-        self.export_root = export_root
+        self.export_root = self.args.export_root
         self.data_root = self._get_rawdata_folder_path()
 
         assert self.min_uc >= 2, 'Need at least 2 ratings per user for validation and test'
@@ -59,37 +57,22 @@ class AbstractDataset(metaclass=ABCMeta):
     def load_ratings_df(self):
         pass
 
-    def load_dataset(self, semi_synthetic):
-        if semi_synthetic == 'generate':
-            dataset = self.preprocess_semi_synthetic()
-        elif semi_synthetic == 'train':
-            dataset = self.preprocess_train_semi_synthetic()
+    def load_dataset(self):
+        if self.args.mode in ['generate_semi_synthetic', 'train_tf', 'tune_tf']:
+            dataset = self.preprocess_for_semi_synthetic_generation()
+        elif self.args.mode in ['train_bert_semi_synthetic', 'tune_bert_semi_synthetic']:
+            dataset = self.preprocess_for_semi_synthetic_training()
         else:
-            dataset = self.preprocess_implicit()
-    #    dataset_path = self._get_preprocessed_dataset_path()
-    #    dataset = pickle.load(dataset_path.open('rb'))
+            dataset = self.preprocess_for_real_training()
         return dataset
 
-    def preprocess_implicit(self):
-        #dataset_path = self._get_preprocessed_dataset_path()
-        #if dataset_path.is_file():
-        #    print('Already preprocessed. Skip preprocessing')
-        #   return
-        #if not dataset_path.parent.is_dir():
-        #    dataset_path.parent.mkdir(parents=True)
+    def preprocess_for_real_training(self):
         self.maybe_download_raw_dataset()
         df = self.load_ratings_df()
         df = self.make_implicit(df)
         df = self.filter_triplets(df)
         df, umap, smap = self.densify_index(df)
-        if Path(self.export_root).joinpath('recommendations', 'rec_iter_' + str(self.args.iteration - 1) + '.pkl').is_file():
-            uid = sorted(list(set(df['uid'])))
-            rating = [5] * len(uid)
-            for i in range(self.args.iteration):
-                next_timestamp = max(df['timestamp']) + 1
-                timestamp = [next_timestamp] * len(uid)
-                sid = pickle.load(Path(self.export_root).joinpath('recommendations', 'rec_iter_' + str(i) + '.pkl').open('rb'))
-                df = pd.concat([df, pd.DataFrame({'uid': uid, 'sid': sid, 'rating': rating, 'timestamp': timestamp})]).reset_index(drop=True)
+        df = self.append_recommendations(df)
         train, val, test = self.split_implicit(df, len(umap))
         dataset = {'train': train,
                    'val': val,
@@ -97,10 +80,8 @@ class AbstractDataset(metaclass=ABCMeta):
                    'umap': umap,
                    'smap': smap}
         return dataset
-        #with dataset_path.open('wb') as f:
-        #    pickle.dump(dataset, f)
 
-    def preprocess_semi_synthetic(self):
+    def preprocess_for_semi_synthetic_generation(self):
         self.maybe_download_raw_dataset()
         df = self.load_ratings_df()
         #df = self.filter_triplets(df)
@@ -119,7 +100,7 @@ class AbstractDataset(metaclass=ABCMeta):
                    'smap': smap}
         return dataset
 
-    def preprocess_train_semi_synthetic(self):
+    def preprocess_for_semi_synthetic_training(self):
         self.check_semi_synthetic_data()
         df = self.load_semi_synthetic_scores()
         df, theta, gamma, exposure, relevance = self.generate_semi_synthetic_data(df, self.args.skewness_parameter)
@@ -204,7 +185,6 @@ class AbstractDataset(metaclass=ABCMeta):
     def make_implicit(self, df):
         print('Converting ratings to interactions...')
         df = df[df['rating'] >= self.min_rating]
-        # return df[['uid', 'sid', 'timestamp']]
         return df
 
     def create_timesteps(self, df):
@@ -299,24 +279,20 @@ class AbstractDataset(metaclass=ABCMeta):
         train, val = train_test_split(train, test_size=test_rate / (1 - test_rate))
         return [list(train['uid']), list(train['sid']), list(train['timestep']), list(train['rating'])], [list(val['uid']), list(val['sid']), list(val['timestep']), list(val['rating'])], [list(test['uid']), list(test['sid']), list(test['timestep']), list(test['rating'])]
 
+    def append_recommendations(self, df):
+        if Path(self.export_root).joinpath('recommendations', 'rec_iter_' + str(self.args.iteration - 1) + '.pkl').is_file():
+            uid = sorted(list(set(df['uid'])))
+            rating = [5] * len(uid)
+            for i in range(self.args.iteration):
+                next_timestamp = max(df['timestamp']) + 1
+                timestamp = [next_timestamp] * len(uid)
+                sid = pickle.load(Path(self.export_root).joinpath('recommendations', 'rec_iter_' + str(i) + '.pkl').open('rb'))
+                df = pd.concat([df, pd.DataFrame({'uid': uid, 'sid': sid, 'rating': rating, 'timestamp': timestamp})]).reset_index(drop=True)
+        return df
+
     def _get_rawdata_root_path(self):
         return Path(RAW_DATASET_ROOT_FOLDER)
 
     def _get_rawdata_folder_path(self):
         root = self._get_rawdata_root_path()
         return root.joinpath(self.raw_code())
-
-    #def _get_preprocessed_root_path(self):
-    #    root = self._get_rawdata_root_path()
-    #    return root.joinpath('preprocessed')
-
-    #def _get_preprocessed_folder_path(self):
-    #   preprocessed_root = self._get_preprocessed_root_path()
-    #    folder_name = '{}_min_rating{}-min_uc{}-min_sc{}-split{}' \
-    #        .format(self.code(), self.min_rating, self.min_uc, self.min_sc, self.split)
-    #    return preprocessed_root.joinpath(folder_name)
-
-    #def _get_preprocessed_dataset_path(self):
-    #    folder = self._get_preprocessed_folder_path()
-    #    return folder.joinpath('dataset.pkl')
-

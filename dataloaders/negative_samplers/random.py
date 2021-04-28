@@ -1,7 +1,5 @@
 from .base import AbstractNegativeSampler
-
 from tqdm import trange
-
 import numpy as np
 import random
 
@@ -27,9 +25,9 @@ class RandomNegativeSampler(AbstractNegativeSampler):
                 seen.update(self.test[user])
             if self.exposure is not None:
                 exposed = set(np.where(self.exposure[user][:, -1] + self.exposure[user][:, -2])[0] + 1)
-                sampling_set = set(range(1, self.item_count + 1)) - seen
-            else:
                 sampling_set = exposed - seen
+            else:
+                sampling_set = set(range(1, self.item_count + 1)) - seen
             assert len(sampling_set) >= self.sample_size, 'Not enough items to sample from.'
             samples = random.sample(sampling_set, self.sample_size)
             #samples = []

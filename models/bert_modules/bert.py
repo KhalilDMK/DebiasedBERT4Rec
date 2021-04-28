@@ -7,17 +7,17 @@ from utils import fix_random_seed_as
 
 
 class BERT(nn.Module):
-    def __init__(self, args, pos_dist, train_popularity_vector_loader):
+    def __init__(self, args):
         super().__init__()
 
         fix_random_seed_as(args.model_init_seed)
         # self.init_weights()
 
         self.max_len = args.bert_max_len
-        num_items = args.num_items
+        item_count = args.item_count
         n_layers = args.bert_num_blocks
         heads = args.bert_num_heads
-        vocab_size = num_items + 2
+        vocab_size = item_count + 2
         hidden = args.bert_hidden_units
         self.hidden = hidden
         dropout = args.bert_dropout
