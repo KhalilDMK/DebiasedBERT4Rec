@@ -23,6 +23,6 @@ def dataloader_factory(args):
         return train_loader, val_loader, test_loader, train_temporal_popularity, train_popularity_loader, val_popularity_loader, test_popularity_loader
     elif args.mode == 'generate_semi_synthetic':
         gen_loader = dataloader.get_gen_loader()
-        return train_loader, val_loader, test_loader, gen_loader, [], [], [], []
+        return train_loader, val_loader, test_loader, gen_loader
     else:
-        return train_loader, val_loader, test_loader, [], [], [], []
+        return train_loader, val_loader, test_loader

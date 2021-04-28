@@ -108,6 +108,7 @@ class AbstractDataset(metaclass=ABCMeta):
         df = self.filter_triplets(df)
         df, umap, smap = self.densify_index(df)
         train, val, test = self.split_implicit(df, len(umap))
+        theta, gamma, exposure = self.densify_semi_synthetic_properties(theta, gamma, exposure, smap)
         dataset = {'train': train,
                    'val': val,
                    'test': test,
@@ -162,6 +163,7 @@ class AbstractDataset(metaclass=ABCMeta):
 
     def generate_semi_synthetic_data(self, df, skewness):
         print('Generating semi_synthetic dataset...')
+        np.random.seed(self.args.generate_semi_synthetic_seed)
         df['gamma'] = df['rating'].apply(lambda x: 1 / (1 + np.exp(- x)))
         df['theta'] = df['interaction'].apply(lambda x: x ** skewness)
         df['r'] = np.random.binomial(n=1, p=df['gamma'])
@@ -181,6 +183,13 @@ class AbstractDataset(metaclass=ABCMeta):
         df['most_relevant'] = df['gamma'] == df['max_gamma']
         df = df[df['most_relevant'] == True]
         return df[['uid', 'sid', 'timestamp', 'rating']], theta, gamma, exposure, relevance
+
+    def densify_semi_synthetic_properties(self, theta, gamma, exposure, smap):
+        indices = [int(x) - 1 for x in smap.keys()]
+        theta = theta[:, indices, :]
+        gamma = gamma[:, indices, :]
+        exposure = exposure[:, indices, :]
+        return theta, gamma, exposure
 
     def make_implicit(self, df):
         print('Converting ratings to interactions...')

@@ -25,6 +25,7 @@ parser.add_argument('--min_uc', type=int, default=5, help='Only keep users with 
 parser.add_argument('--min_sc', type=int, default=0, help='Only keep items with more than min_sc ratings')
 parser.add_argument('--split', type=str, default='leave_one_out', help='How to split the datasets')
 parser.add_argument('--dataset_split_seed', type=int, default=0)
+parser.add_argument('--generate_semi_synthetic_seed', type=int, default=0)
 
 ################
 # Dataloader
