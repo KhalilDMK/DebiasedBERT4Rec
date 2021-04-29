@@ -6,6 +6,14 @@ import os
 from sklearn.metrics import roc_auc_score
 
 
+def maximum_likelihood_estimation_loss(logits, labels, ignore_index=0):
+    if ignore_index is not None:
+        indices = torch.where(labels != ignore_index)[0]
+        logits = logits[indices, :]
+    loss = - logits.mean()
+    return loss
+
+
 def recall(hits, labels, k):
     #return (hits.sum(1) / torch.min(torch.Tensor([k]).to(labels.device), labels.sum(1).float())).mean().cpu().item()
     return hits.sum(1).mean().cpu().item()
