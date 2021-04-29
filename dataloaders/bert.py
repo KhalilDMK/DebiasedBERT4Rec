@@ -86,7 +86,7 @@ class BertDataloader(AbstractDataloader):
         return torch.Tensor(self.gamma)
 
     def get_static_propensity(self):
-        return torch.Tensor(self.theta).sum(-1)
+        return torch.Tensor(self.theta).mean(-1)
 
     def _get_train_loader(self):
         dataset = self._get_train_dataset()
@@ -157,7 +157,7 @@ class BertTrainDataset(data_utils.Dataset):
             print(True)
         tokens = [0] * mask_len + tokens
         labels = [0] * mask_len + labels
-        return torch.LongTensor(tokens), torch.LongTensor(labels)
+        return index, torch.LongTensor(tokens), torch.LongTensor(labels)
 
     def _getseq(self, user):
         return self.u2seq[user]

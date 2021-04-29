@@ -55,7 +55,7 @@ class AbstractTrainer(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def calculate_loss(self, batch):
+    def calculate_loss(self, batch, model_code):
         pass
 
     @abstractmethod

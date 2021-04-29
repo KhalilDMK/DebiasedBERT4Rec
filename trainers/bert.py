@@ -1,5 +1,5 @@
 from .base import AbstractTrainer
-from .utils import metrics_for_ks
+from .utils import metrics_for_ks, maximum_likelihood_estimation_loss
 import torch.nn as nn
 from utils import AverageMeterSet
 from tqdm import tqdm
@@ -23,6 +23,8 @@ class BERTTrainer(AbstractTrainer):
         if args.mode in ['train_bert_real', 'tune_bert_real', 'loop_bert_real']:
             self.preprocess_real_properties(train_temporal_popularity, train_popularity_loader, val_popularity_loader,
                                        test_popularity_loader)
+        if args.mode in ['train_bert_semi_synthetic', 'tune_bert_semi_synthetic']:
+            self.preprocess_semi_synthetic_properties(temporal_propensity, temporal_relevance, static_propensity)
         self.nll = nn.NLLLoss(ignore_index=0)
         self.log_softmax = nn.LogSoftmax(dim=1)
 
@@ -208,21 +210,42 @@ class BERTTrainer(AbstractTrainer):
         }
 
     def calculate_loss(self, batch, model_code):
-        seqs, labels = batch
+        indices, seqs, labels = batch
         batch_size = labels.shape[0]
         logits = self.model(seqs)  # B x T x V
         logits = logits.view(-1, logits.size(-1))  # (B*T) x V
         labels = labels.view(-1)  # B*T
         logits = self.log_softmax(logits)
         if self.args.loss_debiasing == 'temporal_popularity':
-            temp_prop_enc = self.train_temporal_popularity[
+            temp_pop_enc = self.train_temporal_popularity[
                 labels.cpu(), list(range(self.args.bert_max_len)) * batch_size].view(-1, self.max_len)
-            temp_prop_enc = temp_prop_enc.flatten()
-            logits = torch.div(logits, torch.pow(temp_prop_enc.unsqueeze(1), self.args.skew_power))
+            temp_pop_enc = temp_pop_enc.flatten()
+            logits = torch.div(logits, torch.pow(temp_pop_enc.unsqueeze(1), self.args.skew_power))
+            loss = self.nll(logits, labels)
         elif self.args.loss_debiasing == 'static_popularity':
-            stat_prop_enc = self.train_popularity_vector[labels]
-            logits = torch.div(logits, torch.pow(stat_prop_enc.unsqueeze(1), self.args.skew_power))
-        loss = self.nll(logits, labels)
+            stat_pop_enc = self.train_popularity_vector[labels]
+            logits = torch.div(logits, torch.pow(stat_pop_enc.unsqueeze(1), self.args.skew_power))
+            loss = self.nll(logits, labels)
+        elif self.args.loss_debiasing == 'relevance':
+            relevance_enc = self.temporal_relevance[indices]
+            relevance_enc = torch.transpose(relevance_enc, 1, 2)
+            relevance_enc = relevance_enc.reshape(-1, relevance_enc.size(-1))
+            logits = logits * relevance_enc
+            logits = logits[:, 1:]
+            loss = maximum_likelihood_estimation_loss(logits, labels, ignore_index=0)
+        elif self.args.loss_debiasing == 'temporal_propensity':
+            temp_prop_enc = self.temporal_propensity[indices]
+            temp_prop_enc = torch.transpose(temp_prop_enc, 1, 2)
+            temp_prop_enc = temp_prop_enc.reshape(-1, temp_prop_enc.size(-1))
+            logits = torch.div(logits, temp_prop_enc)
+            loss = self.nll(logits, labels)
+        elif self.args.loss_debiasing == 'static_propensity':
+            stat_prop_enc = self.static_propensity[indices]
+            stat_prop_enc = stat_prop_enc.unsqueeze(1)
+            stat_prop_enc = stat_prop_enc.repeat(1, self.args.bert_max_len, 1)
+            stat_prop_enc = stat_prop_enc.reshape(-1, stat_prop_enc.size(-1))
+            logits = torch.div(logits, stat_prop_enc)
+            loss = self.nll(logits, labels)
 
         return loss
 
@@ -259,3 +282,8 @@ class BERTTrainer(AbstractTrainer):
         item_similarity_matrix = torch.cat((torch.zeros(1, item_similarity_matrix.shape[1]).to(self.device), item_similarity_matrix), 0)
         item_similarity_matrix = torch.cat((torch.zeros(item_similarity_matrix.shape[0], 1).to(self.device), item_similarity_matrix), 1)
         return item_similarity_matrix
+
+    def preprocess_semi_synthetic_properties(self, temporal_propensity, temporal_relevance, static_propensity):
+        self.temporal_propensity = torch.cat((torch.ones(temporal_propensity.shape[0], 1, temporal_propensity.shape[2]).to(self.device), temporal_propensity.to(self.device)), 1)
+        self.temporal_relevance = torch.cat((torch.ones(temporal_relevance.shape[0], 1, temporal_relevance.shape[2]).to(self.device), temporal_relevance.to(self.device)), 1)
+        self.static_propensity = torch.cat((torch.ones(static_propensity.shape[0], 1).to(self.device), static_propensity.to(self.device)), 1)
