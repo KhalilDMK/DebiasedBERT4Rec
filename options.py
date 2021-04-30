@@ -66,9 +66,9 @@ parser.add_argument('--enable_lr_schedule', type=bool, default=True, help='Set T
 parser.add_argument('--decay_step', type=int, default=50, help='Decay step for StepLR')
 parser.add_argument('--gamma', type=float, default=0.1, help='Gamma for StepLR')
 # feedback loop iterations #
-parser.add_argument('--num_iterations', type=int, default=3, help='Number of feedback loop iterations.')
+parser.add_argument('--num_iterations', type=int, default=20, help='Number of feedback loop iterations.')
 # epochs #
-parser.add_argument('--num_epochs', type=int, default=2, help='Number of epochs for training.')
+parser.add_argument('--num_epochs', type=int, default=50, help='Number of epochs for training.')
 # logger #
 parser.add_argument('--log_period_as_iter', type=int, default=12800)
 # evaluation #

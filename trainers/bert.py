@@ -221,32 +221,27 @@ class BERTTrainer(AbstractTrainer):
                 labels.cpu(), list(range(self.args.bert_max_len)) * batch_size].view(-1, self.max_len)
             temp_pop_enc = temp_pop_enc.flatten()
             logits = torch.div(logits, torch.pow(temp_pop_enc.unsqueeze(1), self.args.skew_power))
-            loss = self.nll(logits, labels)
         elif self.args.loss_debiasing == 'static_popularity':
             stat_pop_enc = self.train_popularity_vector[labels]
             logits = torch.div(logits, torch.pow(stat_pop_enc.unsqueeze(1), self.args.skew_power))
-            loss = self.nll(logits, labels)
         elif self.args.loss_debiasing == 'relevance':
             relevance_enc = self.temporal_relevance[indices]
             relevance_enc = torch.transpose(relevance_enc, 1, 2)
             relevance_enc = relevance_enc.reshape(-1, relevance_enc.size(-1))
+            labels = torch.where(labels > 0, relevance_enc[:, 1:].max(1)[1] + 1, 0)
             logits = logits * relevance_enc
-            logits = logits[:, 1:]
-            loss = maximum_likelihood_estimation_loss(logits, labels, ignore_index=0)
         elif self.args.loss_debiasing == 'temporal_propensity':
             temp_prop_enc = self.temporal_propensity[indices]
             temp_prop_enc = torch.transpose(temp_prop_enc, 1, 2)
             temp_prop_enc = temp_prop_enc.reshape(-1, temp_prop_enc.size(-1))
             logits = torch.div(logits, temp_prop_enc)
-            loss = self.nll(logits, labels)
         elif self.args.loss_debiasing == 'static_propensity':
             stat_prop_enc = self.static_propensity[indices]
             stat_prop_enc = stat_prop_enc.unsqueeze(1)
             stat_prop_enc = stat_prop_enc.repeat(1, self.args.bert_max_len, 1)
             stat_prop_enc = stat_prop_enc.reshape(-1, stat_prop_enc.size(-1))
             logits = torch.div(logits, stat_prop_enc)
-            loss = self.nll(logits, labels)
-
+        loss = self.nll(logits, labels)
         return loss
 
     def calculate_metrics(self, batch, popularity_vector=[], item_similarity_matrix=[]):
