@@ -107,8 +107,9 @@ class AbstractDataset(metaclass=ABCMeta):
         df = self.make_implicit(df)
         df = self.filter_triplets(df)
         df, umap, smap = self.densify_index(df)
-        train, val, test = self.split_implicit(df, len(umap))
+        train, val, test = self.split_implicit(df, len(umap), gamma)
         theta, gamma, exposure = self.densify_semi_synthetic_properties(theta, gamma, exposure, smap)
+        val, test = self.debias_evaluation_sets(val, test, gamma)
         dataset = {'train': train,
                    'val': val,
                    'test': test,
@@ -191,6 +192,22 @@ class AbstractDataset(metaclass=ABCMeta):
         exposure = exposure[:, indices, :]
         return theta, gamma, exposure
 
+    def debias_evaluation_sets(self, val, test, gamma):
+        print('Debiasing evaluation sets...')
+        gamma = np.transpose(gamma, (0, 2, 1))
+
+        unbiased_eval = gamma[:, -2, :]
+        unbiased_eval = np.argmax(unbiased_eval, axis=1)
+        unbiased_eval = unbiased_eval + 1
+        val = {k: v for k, v in zip(val.keys(), [[x] for x in unbiased_eval])}
+
+        unbiased_eval = gamma[:, -1, :]
+        unbiased_eval = np.argmax(unbiased_eval, axis=1)
+        unbiased_eval = unbiased_eval + 1
+        test = {k: v for k, v in zip(test.keys(), [[x] for x in unbiased_eval])}
+
+        return val, test
+
     def make_implicit(self, df):
         print('Converting ratings to interactions...')
         df = df[df['rating'] >= self.min_rating]
@@ -248,7 +265,7 @@ class AbstractDataset(metaclass=ABCMeta):
         df['sid'] = df['sid'].map(smap)
         return df, umap, smap
 
-    def split_implicit(self, df, user_count):
+    def split_implicit(self, df, user_count, gamma):
         if self.args.split == 'leave_one_out':
             print('Splitting data...')
             user_group = df.groupby('uid')
