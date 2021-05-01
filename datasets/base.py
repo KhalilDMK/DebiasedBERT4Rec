@@ -73,6 +73,7 @@ class AbstractDataset(metaclass=ABCMeta):
         df = self.filter_triplets(df)
         df, umap, smap = self.densify_index(df)
         df = self.append_recommendations(df)
+        self.print_dataset_properties(df)
         train, val, test = self.split_implicit(df, len(umap))
         dataset = {'train': train,
                    'val': val,
@@ -315,6 +316,14 @@ class AbstractDataset(metaclass=ABCMeta):
                 sid = pickle.load(Path(self.export_root).joinpath('recommendations', 'rec_iter_' + str(i) + '.pkl').open('rb'))
                 df = pd.concat([df, pd.DataFrame({'uid': uid, 'sid': sid, 'rating': rating, 'timestamp': timestamp})]).reset_index(drop=True)
         return df
+
+    def print_dataset_properties(self, df):
+        print('Dataset properties:')
+        print('num sessions: ' + str(len(set(df['uid']))))
+        print('num items: ' + str(len(set(df['sid']))))
+        print('num interactions: ' + str(len(df)))
+        print('avg seq len: ' + str(np.mean(df.groupby('uid').count()['sid'])))
+        print('data sparsity: ' + str(100 * (1 - (len(df) / len(set(df['uid'])) / len(set(df['sid']))))) + '%')
 
     def _get_rawdata_root_path(self):
         return Path(RAW_DATASET_ROOT_FOLDER)

@@ -16,7 +16,8 @@ class AMAZONBEAUTY(AbstractDataset):
 
     @classmethod
     def url(cls):
-        return 'http://deepyeti.ucsd.edu/jianmo/amazon/categoryFilesSmall/All_Beauty.csv'
+        #return 'http://deepyeti.ucsd.edu/jianmo/amazon/categoryFilesSmall/All_Beauty.csv'
+        return 'http://snap.stanford.edu/data/amazon/productGraph/categoryFiles/ratings_Beauty.csv'
 
     @classmethod
     def zip_file_content_is_folder(cls):
