@@ -16,13 +16,13 @@ import sys
 
 
 class BERTTrainer(AbstractTrainer):
-    def __init__(self, args, model, train_loader, val_loader, test_loader, train_temporal_popularity, train_popularity_loader, val_popularity_loader, test_popularity_loader, temporal_propensity, temporal_relevance, static_propensity):
+    def __init__(self, args, model, train_loader, val_loader, test_loader, train_temporal_popularity, train_popularity, val_popularity, test_popularity, temporal_propensity, temporal_relevance, static_propensity):
         super().__init__(args, model, train_loader, val_loader, test_loader)
 
         self.max_len = args.bert_max_len
         if args.mode in ['train_bert_real', 'tune_bert_real', 'loop_bert_real']:
-            self.preprocess_real_properties(train_temporal_popularity, train_popularity_loader, val_popularity_loader,
-                                       test_popularity_loader)
+            self.preprocess_real_properties(train_temporal_popularity, train_popularity, val_popularity,
+                                       test_popularity)
         if args.mode in ['train_bert_semi_synthetic', 'tune_bert_semi_synthetic']:
             self.preprocess_semi_synthetic_properties(temporal_propensity, temporal_relevance, static_propensity)
         self.nll = nn.NLLLoss(ignore_index=0)
@@ -52,7 +52,7 @@ class BERTTrainer(AbstractTrainer):
                 batch = [x.to(self.device) for x in batch]
 
                 if self.args.mode in ['train_bert_real', 'tune_bert_real', 'loop_bert_real']:
-                    metrics = self.calculate_metrics(batch, self.val_popularity_vector, self.val_item_similarity_matrix)
+                    metrics = self.calculate_metrics(batch, self.val_popularity_vector)
                 if self.args.mode in ['train_bert_semi_synthetic', 'tune_bert_semi_synthetic']:
                     metrics = self.calculate_metrics(batch)
 
@@ -61,8 +61,7 @@ class BERTTrainer(AbstractTrainer):
                 description_metrics = ['NDCG@%d' % k for k in self.metric_ks[:3]] +\
                                       ['Recall@%d' % k for k in self.metric_ks[:3]] + \
                                       ['AvgPop@%d' % k for k in self.metric_ks[:3]] + \
-                                      ['EFD@%d' % k for k in self.metric_ks[:3]] + \
-                                      ['Diversity@%d' % k for k in self.metric_ks[:3]]
+                                      ['EFD@%d' % k for k in self.metric_ks[:3]]
                 description = 'Val: ' + ', '.join(s + ' {:.3f}' for s in description_metrics)
                 description = description.replace('NDCG', 'N').replace('Recall', 'R')
                 description = description.format(*(average_meter_set[k].avg for k in description_metrics))
@@ -98,7 +97,7 @@ class BERTTrainer(AbstractTrainer):
                 batch = [x.to(self.device) for x in batch]
 
                 if self.args.mode in ['train_bert_real', 'tune_bert_real', 'loop_bert_real']:
-                    metrics = self.calculate_metrics(batch, self.val_popularity_vector, self.val_item_similarity_matrix)
+                    metrics = self.calculate_metrics(batch, self.val_popularity_vector)
                 if self.args.mode in ['train_bert_semi_synthetic', 'tune_bert_semi_synthetic']:
                     metrics = self.calculate_metrics(batch)
 
@@ -107,8 +106,7 @@ class BERTTrainer(AbstractTrainer):
                 description_metrics = ['NDCG@%d' % k for k in self.metric_ks[:3]] +\
                                       ['Recall@%d' % k for k in self.metric_ks[:3]] + \
                                       ['AvgPop@%d' % k for k in self.metric_ks[:3]] + \
-                                      ['EFD@%d' % k for k in self.metric_ks[:3]] + \
-                                      ['Diversity@%d' % k for k in self.metric_ks[:3]]
+                                      ['EFD@%d' % k for k in self.metric_ks[:3]]
                 description = 'Val: ' + ', '.join(s + ' {:.3f}' for s in description_metrics)
                 description = description.replace('NDCG', 'N').replace('Recall', 'R')
                 description = description.format(*(average_meter_set[k].avg for k in description_metrics))
@@ -244,39 +242,30 @@ class BERTTrainer(AbstractTrainer):
         loss = self.nll(logits, labels)
         return loss
 
-    def calculate_metrics(self, batch, popularity_vector=[], item_similarity_matrix=[]):
+    def calculate_metrics(self, batch, popularity_vector=[]):
         seqs, candidates, labels = batch
         scores = self.model(seqs)  # B x T x V
         scores = scores[:, -1, :]  # B x V
         scores = scores.gather(1, candidates)  # B x C
 
-        metrics = metrics_for_ks(self.args, scores, labels, candidates, self.metric_ks, popularity_vector, item_similarity_matrix)
+        metrics = metrics_for_ks(self.args, scores, labels, candidates, self.metric_ks, popularity_vector)
         return metrics
 
-    def preprocess_real_properties(self, train_temporal_popularity, train_popularity_loader, val_popularity_loader, test_popularity_loader):
+    def preprocess_real_properties(self, train_temporal_popularity, train_popularity, val_popularity, test_popularity):
         self.train_temporal_popularity = self.preprocess_temporal_popularity(train_temporal_popularity)
-        self.train_popularity_vector = self.preprocess_popularity_vector(train_popularity_loader)
-        self.train_item_similarity_matrix = self.preprocess_item_similarity_matrix(train_popularity_loader)
-        self.val_popularity_vector = self.preprocess_popularity_vector(val_popularity_loader)
-        self.val_item_similarity_matrix = self.preprocess_item_similarity_matrix(val_popularity_loader)
-        self.test_popularity_vector = self.preprocess_popularity_vector(test_popularity_loader)
-        self.test_item_similarity_matrix = self.preprocess_item_similarity_matrix(test_popularity_loader)
+        self.train_popularity_vector = self.preprocess_popularity_vector(train_popularity)
+        self.val_popularity_vector = self.preprocess_popularity_vector(val_popularity)
+        self.test_popularity_vector = self.preprocess_popularity_vector(test_popularity)
 
     def preprocess_temporal_popularity(self, temporal_popularity):
         temporal_popularity = temporal_popularity.to(self.device)
         temporal_popularity = torch.cat((torch.zeros(1, self.max_len).to(self.device), temporal_popularity), 0) + sys.float_info.epsilon
         return temporal_popularity
 
-    def preprocess_popularity_vector(self, popularity_loader):
-        popularity_vector = popularity_loader.popularity_vector.to(self.device)
+    def preprocess_popularity_vector(self, popularity):
+        popularity_vector = popularity.to(self.device)
         popularity_vector = torch.cat((torch.FloatTensor([0]).to(self.device), popularity_vector)) + sys.float_info.epsilon
         return popularity_vector
-
-    def preprocess_item_similarity_matrix(self, popularity_loader):
-        item_similarity_matrix = popularity_loader.item_similarity_matrix.to(self.device)
-        item_similarity_matrix = torch.cat((torch.zeros(1, item_similarity_matrix.shape[1]).to(self.device), item_similarity_matrix), 0)
-        item_similarity_matrix = torch.cat((torch.zeros(item_similarity_matrix.shape[0], 1).to(self.device), item_similarity_matrix), 1)
-        return item_similarity_matrix
 
     def preprocess_semi_synthetic_properties(self, temporal_propensity, temporal_relevance, static_propensity):
         self.temporal_propensity = torch.cat((torch.ones(temporal_propensity.shape[0], 1, temporal_propensity.shape[2]).to(self.device), temporal_propensity.to(self.device)), 1)

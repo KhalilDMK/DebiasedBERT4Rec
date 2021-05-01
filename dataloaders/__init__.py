@@ -19,8 +19,8 @@ def dataloader_factory(args):
         temporal_propensity, temporal_relevance, static_propensity = dataloader.get_semi_synthetic_properties()
         return train_loader, val_loader, test_loader, temporal_propensity, temporal_relevance, static_propensity
     elif args.mode in ['train_bert_real', 'tune_bert_real', 'loop_bert_real']:
-        train_temporal_popularity, train_popularity_loader, val_popularity_loader, test_popularity_loader = dataloader.get_real_properties()
-        return train_loader, val_loader, test_loader, train_temporal_popularity, train_popularity_loader, val_popularity_loader, test_popularity_loader
+        train_temporal_popularity, train_popularity, val_popularity, test_popularity = dataloader.get_real_properties()
+        return train_loader, val_loader, test_loader, train_temporal_popularity, train_popularity, val_popularity, test_popularity
     elif args.mode == 'generate_semi_synthetic':
         gen_loader = dataloader.get_gen_loader()
         return train_loader, val_loader, test_loader, gen_loader
