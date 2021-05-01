@@ -107,7 +107,7 @@ class AbstractDataset(metaclass=ABCMeta):
         df = self.make_implicit(df)
         df = self.filter_triplets(df)
         df, umap, smap = self.densify_index(df)
-        train, val, test = self.split_implicit(df, len(umap), gamma)
+        train, val, test = self.split_implicit(df, len(umap))
         theta, gamma, exposure = self.densify_semi_synthetic_properties(theta, gamma, exposure, smap)
         val, test = self.debias_evaluation_sets(val, test, gamma)
         dataset = {'train': train,
@@ -265,7 +265,7 @@ class AbstractDataset(metaclass=ABCMeta):
         df['sid'] = df['sid'].map(smap)
         return df, umap, smap
 
-    def split_implicit(self, df, user_count, gamma):
+    def split_implicit(self, df, user_count):
         if self.args.split == 'leave_one_out':
             print('Splitting data...')
             user_group = df.groupby('uid')
