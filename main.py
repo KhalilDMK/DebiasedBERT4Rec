@@ -65,7 +65,7 @@ def train_tf():
 def tune_tf():
     num_configurations = args.num_configurations
     num_reps = args.num_reps
-    hyperparameters = ['bert_hidden_units', 'train_batch_size']
+    hyperparameters = ['tf_hidden_units', 'train_batch_size']
     hyper_tun_configurations = []
     for hyperparameter in hyperparameters:
         exec('tune_' + hyperparameter + ' = eval(eval("args.tune_" + hyperparameter))')
@@ -108,6 +108,27 @@ def train_bert_semi_synthetic():
     trainer.final_data_eval_save_results()
 
 
+def tune_bert_semi_synthetic():
+    num_configurations = args.num_configurations
+    num_reps = args.num_reps
+    hyperparameters = ['bert_hidden_units', 'bert_num_blocks', 'bert_num_heads', 'train_batch_size', 'bert_dropout',
+                       'bert_mask_prob', 'skew_power']
+    hyper_tun_configurations = []
+    for hyperparameter in hyperparameters:
+        exec('tune_' + hyperparameter + ' = eval(eval("args.tune_" + hyperparameter))')
+        hyper_tun_configurations.append(eval('tune_' + hyperparameter))
+    hyper_tun_configurations = random.sample(set(itertools.product(*hyper_tun_configurations)), num_configurations)
+    for configuration in hyper_tun_configurations:
+        print('#' * 50 + '\nconfiguration ' + str(configuration) + '\n' + '#' * 50)
+        for i in range(len(hyperparameters)):
+            exec('args.' + hyperparameters[i] + ' = configuration[i]')
+        for rep in range(num_reps):
+            args.rep = rep
+            print('\nRep: ' + str(rep) + '\n' + '#' * 20)
+            torch.cuda.empty_cache()
+            train_bert_semi_synthetic()
+    summarize_tuning_results(args.export_root, hyperparameters)
+
 if __name__ == '__main__':
     args.iteration = -1
     args.export_root = setup_train(args)
@@ -121,7 +142,7 @@ if __name__ == '__main__':
     elif args.mode == 'train_bert_semi_synthetic':
         train_bert_semi_synthetic()
     elif args.mode == 'tune_bert_semi_synthetic':
-        print()
+        tune_bert_semi_synthetic()
     elif args.mode == 'generate_semi_synthetic':
         generate_semi_synthetic()
     elif args.mode == 'train_tf':

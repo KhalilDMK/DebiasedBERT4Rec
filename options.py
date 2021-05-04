@@ -117,15 +117,16 @@ parser.add_argument('--experiment_description', type=str, default='test')
 ################
 # Hyperparameter tuning
 ################
-parser.add_argument('--num_configurations', type=int, default=2, help='Number of random hyperparameter configurations.')
+parser.add_argument('--num_configurations', type=int, default=20, help='Number of random hyperparameter configurations.')
 parser.add_argument('--num_reps', type=int, default=2, help='Number of replicates in hyperparameter tuning.')
-parser.add_argument('--tune_bert_hidden_units', type=str, default='[64, 128, 256, 512]', help='Tuning values for bert_hidden_units.')
+parser.add_argument('--tune_bert_hidden_units', type=str, default='[64, 128, 256]', help='Tuning values for bert_hidden_units.')
 parser.add_argument('--tune_bert_num_blocks', type=str, default='[1, 2, 3]', help='Tuning values for bert_num_blocks.')
 parser.add_argument('--tune_bert_num_heads', type=str, default='[1, 2, 4, 8]', help='Tuning values for bert_num_heads.')
-parser.add_argument('--tune_train_batch_size', type=str, default='[128, 256, 512]', help='Tuning values for train_batch_size.')
+parser.add_argument('--tune_train_batch_size', type=str, default='[64, 128, 256]', help='Tuning values for train_batch_size.')
 parser.add_argument('--tune_bert_dropout', type=str, default='[0, 0.01, 0.1, 0.2]', help='Tuning values for bert_dropout.')
 parser.add_argument('--tune_bert_mask_prob', type=str, default='[0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6]', help='Tuning values for bert_mask_prob.')
 parser.add_argument('--tune_skew_power', type=str, default='[0.0001, 0.001, 0.01, 0.1, 0.2, 0.5, 1]', help='Tuning values for skew_power.')
+parser.add_argument('--tune_tf_hidden_units', type=str, default='[50, 100, 200]', help='Tuning values for tf_hidden_units.')
 
 ################
 args = parser.parse_args()
