@@ -62,4 +62,11 @@ python -m main [-h]
 ```
 
 You can perform the following tasks with the argument "mode":
-* Train BERT4Rec on a real-world dataset: use <script>--mode train_bert_real</script>
+* Train BERT4Rec on a real-world dataset: use --mode train_bert_real
+* Tune BERT4Rec on a real-world dataset: use --mode tune_bert_real
+* Train BERT4Rec on a feedback loop, on a real-world dataset: use --mode loop_bert_real
+* Train BERT4Rec on a semi-synthetic dataset: use --mode train_bert_semi_synthetic
+* Tune BERT4Rec on a semi-synthetic dataset: use --mode tune_bert_semi_synthetic
+* Train Tensor Factorization model on a real-world dataset: use --train_tf
+* Tune Tensor Factorization model on a real-world dataset: use --tune_tf
+* Generate semi-synthetic data: use --mode generate_semi_synthetic with --tf_target exposure to generate interactions, and --tf_target relevance to generate ratings.
