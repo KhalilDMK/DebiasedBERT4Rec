@@ -71,6 +71,13 @@ You can perform the following tasks with the argument "mode":
 * Tune Tensor Factorization model on a real-world dataset: use --tune_tf
 * Generate semi-synthetic data: use --mode generate_semi_synthetic with --tf_target exposure to generate interactions, and --tf_target relevance to generate ratings.
 
+To use a debiased loss function, use the argument --loss_debiasing with the values:
+* 'static_propensity' for IPS-BERT4Rec with semi-synthetic propensities.
+* 'temporal_propensity' for ITPS-BERT4Rec with semi-synthetic propensities.
+* 'relevance' for Rel-BERT4Rec with semi-synthetic relevance.
+* 'static_popularity' for IPS-BERT4Rec with real popularities.
+* 'temporal_popularity' is ITPS-BERT4Rec with real temporal popularities.
+
 All argument descriptions are below:
 
 ```
