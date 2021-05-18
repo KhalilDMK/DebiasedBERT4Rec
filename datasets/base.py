@@ -93,6 +93,7 @@ class AbstractDataset(metaclass=ABCMeta):
             df = self.convert_to_exposure(df, umap, smap)
             if self.args.frac_exposure_negatives:
                 df = self.sample_negative_exposure(df, self.args.frac_exposure_negatives)
+        self.print_dataset_properties(df)
         train, val, test = self.split_explicit(df, test_rate=0.1)
         dataset = {'train': train,
                    'val': val,
@@ -108,9 +109,11 @@ class AbstractDataset(metaclass=ABCMeta):
         df = self.make_implicit(df)
         df = self.filter_triplets(df)
         df, umap, smap = self.densify_index(df)
+        self.print_dataset_properties(df)
         train, val, test = self.split_implicit(df, len(umap))
         theta, gamma, exposure = self.densify_semi_synthetic_properties(theta, gamma, exposure, smap)
-        val, test = self.debias_evaluation_sets(val, test, gamma)
+        if self.args.unbiased_eval:
+            val, test = self.debias_evaluation_sets(val, test, gamma)
         dataset = {'train': train,
                    'val': val,
                    'test': test,
@@ -165,7 +168,8 @@ class AbstractDataset(metaclass=ABCMeta):
 
     def generate_semi_synthetic_data(self, df, skewness):
         print('Generating semi_synthetic dataset...')
-        np.random.seed(self.args.generate_semi_synthetic_seed)
+        if self.args.generate_semi_synthetic_seed is not None:
+            np.random.seed(self.args.generate_semi_synthetic_seed)
         df['gamma'] = df['rating'].apply(lambda x: 1 / (1 + np.exp(- x)))
         df['theta'] = df['interaction'].apply(lambda x: x ** skewness)
         df['r'] = np.random.binomial(n=1, p=df['gamma'])
@@ -173,10 +177,10 @@ class AbstractDataset(metaclass=ABCMeta):
         num_sessions = len(set(df['uid']))
         num_items = len(set(df['sid']))
         num_timesteps = len(set(df['timestamp']))
-        theta = np.array(df['theta']).reshape(num_sessions, num_items, num_timesteps)
-        gamma = np.array(df['gamma']).reshape(num_sessions, num_items, num_timesteps)
-        exposure = np.array(df['o']).reshape(num_sessions, num_items, num_timesteps)
-        relevance = np.array(df['r']).reshape(num_sessions, num_items, num_timesteps)
+        theta = np.array(df['theta']).reshape((num_sessions, num_items, num_timesteps))
+        gamma = np.array(df['gamma']).reshape((num_sessions, num_items, num_timesteps))
+        exposure = np.array(df['o']).reshape((num_sessions, num_items, num_timesteps))
+        relevance = np.array(df['r']).reshape((num_sessions, num_items, num_timesteps))
         df['y'] = df['o'] * df['r']
         df = df[df['y'] == 1]
         max_gamma = df[['uid', 'timestamp', 'gamma']].groupby(['uid', 'timestamp']).max().reset_index()
