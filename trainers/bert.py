@@ -230,9 +230,13 @@ class BERTTrainer(AbstractTrainer):
             logits = logits * relevance_enc
         elif self.args.loss_debiasing == 'temporal_propensity':
             temp_prop_enc = self.temporal_propensity[indices]
+            temp_prop_enc = torch.where(temp_prop_enc.double() > 0.2, temp_prop_enc.double(), 0.2)  # Propensity clipping
             temp_prop_enc = torch.transpose(temp_prop_enc, 1, 2)
             temp_prop_enc = temp_prop_enc.reshape(-1, temp_prop_enc.size(-1))
             logits = torch.div(logits, temp_prop_enc)
+            #logits = logits[range(logits.shape[0]), labels.tolist()]
+            #logits = logits[labels != 0]
+            #loss = torch.min(torch.mean(- logits))
         elif self.args.loss_debiasing == 'static_propensity':
             stat_prop_enc = self.static_propensity[indices]
             stat_prop_enc = stat_prop_enc.unsqueeze(1)
@@ -268,6 +272,6 @@ class BERTTrainer(AbstractTrainer):
         return popularity_vector
 
     def preprocess_semi_synthetic_properties(self, temporal_propensity, temporal_relevance, static_propensity):
-        self.temporal_propensity = torch.cat((torch.ones(temporal_propensity.shape[0], 1, temporal_propensity.shape[2]).to(self.device), temporal_propensity.to(self.device)), 1)
-        self.temporal_relevance = torch.cat((torch.ones(temporal_relevance.shape[0], 1, temporal_relevance.shape[2]).to(self.device), temporal_relevance.to(self.device)), 1)
-        self.static_propensity = torch.cat((torch.ones(static_propensity.shape[0], 1).to(self.device), static_propensity.to(self.device)), 1)
+        self.temporal_propensity = torch.cat((torch.zeros(temporal_propensity.shape[0], 1, temporal_propensity.shape[2]).to(self.device), temporal_propensity.to(self.device)), 1) + sys.float_info.epsilon
+        self.temporal_relevance = torch.cat((torch.zeros(temporal_relevance.shape[0], 1, temporal_relevance.shape[2]).to(self.device), temporal_relevance.to(self.device)), 1)
+        self.static_propensity = torch.cat((torch.zeros(static_propensity.shape[0], 1).to(self.device), static_propensity.to(self.device)), 1) + sys.float_info.epsilon

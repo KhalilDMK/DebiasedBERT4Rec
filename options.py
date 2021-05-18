@@ -25,7 +25,7 @@ parser.add_argument('--min_uc', type=int, default=5, help='Only keep users with 
 parser.add_argument('--min_sc', type=int, default=5, help='Only keep items with more than min_sc ratings')
 parser.add_argument('--split', type=str, default='leave_one_out', help='How to split the datasets')
 parser.add_argument('--dataset_split_seed', type=int, default=0)
-parser.add_argument('--generate_semi_synthetic_seed', type=int, default=0)
+parser.add_argument('--generate_semi_synthetic_seed', type=int, default=1)
 
 ################
 # Dataloader
@@ -107,6 +107,7 @@ parser.add_argument('--tf_hidden_units', type=int, default=100, help='Number of 
 parser.add_argument('--tf_target', type=str, default='relevance', choices=['exposure', 'relevance'], help='Target to be modeled by the Tensor Factorization model.')
 parser.add_argument('--frac_exposure_negatives', type=float, default=3.0, help='Fraction of sampled instances with negative exposure per number of positive instances. If None, all non-interactions will be considered as having negative exposure.')
 parser.add_argument('--skewness_parameter', type=float, default=1.0, help='Power applied to the propensity scores to control the exposure bias through the skewness of the distribution.')
+parser.add_argument('--unbiased_eval', type=bool, default=True, help='Set True to enable an unbiased semi-synthetic evaluation on true relevance.')
 
 ################
 # Experiment

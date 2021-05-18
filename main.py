@@ -112,7 +112,7 @@ def tune_bert_semi_synthetic():
     num_configurations = args.num_configurations
     num_reps = args.num_reps
     hyperparameters = ['bert_hidden_units', 'bert_num_blocks', 'bert_num_heads', 'train_batch_size', 'bert_dropout',
-                       'bert_mask_prob', 'skew_power']
+                       'bert_mask_prob']
     hyper_tun_configurations = []
     for hyperparameter in hyperparameters:
         exec('tune_' + hyperparameter + ' = eval(eval("args.tune_" + hyperparameter))')

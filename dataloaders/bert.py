@@ -97,13 +97,13 @@ class BertDataloader(AbstractDataloader):
         return popularity
 
     def get_temporal_propensity(self):
-        return torch.Tensor(self.theta)
+        return torch.Tensor(self.theta[:, :, -self.args.bert_max_len:])
 
     def get_temporal_relevance(self):
-        return torch.Tensor(self.gamma)
+        return torch.Tensor(self.gamma[:, :, -self.args.bert_max_len:])
 
     def get_static_propensity(self):
-        return torch.Tensor(self.theta).mean(-1)
+        return torch.Tensor(self.theta[:, :, -self.args.bert_max_len:]).mean(-1)
 
     def _get_train_loader(self):
         dataset = self._get_train_dataset()

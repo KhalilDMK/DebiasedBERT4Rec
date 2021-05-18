@@ -23,11 +23,7 @@ class RandomNegativeSampler(AbstractNegativeSampler):
                 seen = set(self.train[user])
                 seen.update(self.val[user])
                 seen.update(self.test[user])
-            if self.exposure is not None:
-                exposed = set(np.where(self.exposure[user][:, -1] + self.exposure[user][:, -2])[0] + 1)
-                sampling_set = exposed - seen
-            else:
-                sampling_set = set(range(1, self.item_count + 1)) - seen
+            sampling_set = set(range(1, self.item_count + 1)) - seen
             assert len(sampling_set) >= self.sample_size, 'Not enough items to sample from.'
             samples = random.sample(sampling_set, self.sample_size)
             negative_samples[user] = samples
