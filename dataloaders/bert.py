@@ -45,13 +45,24 @@ class BertDataloader(AbstractDataloader):
         return temporal_propensity, temporal_relevance, static_propensity
 
     def get_real_properties(self):
-        train_temporal_popularity = self.get_train_temporal_popularity()
+        train_temporal_popularity = self.get_temporal_popularity(include_test=False)
+        val_temporal_popularity = self.get_temporal_popularity(include_test=True, mode='val')
+        test_temporal_popularity = self.get_temporal_popularity(include_test=True, mode='test')
         train_popularity = self.get_popularity(include_test=False)
         val_popularity = self.get_popularity(include_test=True, mode='val')
         test_popularity = self.get_popularity(include_test=True, mode='test')
-        return train_temporal_popularity, train_popularity, val_popularity, test_popularity
+        return train_temporal_popularity, val_temporal_popularity, test_temporal_popularity, train_popularity, val_popularity, test_popularity
 
-    def get_train_temporal_popularity(self):
+    def get_temporal_popularity(self, include_test=False, mode='test'):
+        answers = self.val if mode == 'val' else self.test
+        if include_test:
+            print('Generating ' + mode + ' temporal popularity vector...')
+        else:
+            print('Generating train temporal popularity vector...')
+        temporal_popularity_vector = self.get_temporal_popularity_matrix(answers, include_test)
+        return temporal_popularity_vector
+
+    def get_temporal_popularity_matrix(self, answers, include_test):
         item_count = self.args.item_count
         u2seq = self.train
         max_len = self.max_len
@@ -61,11 +72,16 @@ class BertDataloader(AbstractDataloader):
             seq[i][-len(j)::] = j
         if seq.shape[1] < max_len:
             seq = np.concatenate((np.zeros((seq.shape[0], max_len - seq.shape[1])), seq), axis=1)
+        if include_test:
+            seq = np.append(seq, np.array(list(answers.values())), axis=1)
+            max_len += 1
         occurrences = [Counter(seq[:, j]) for j in range(max_len)]
         item_index = pd.Index(range(item_count + 1))
         occurrences = pd.DataFrame(occurrences).transpose().reindex(item_index).sort_index().fillna(0).values[1::]
         occurrences = torch.Tensor(occurrences)
         train_temporal_popularity = occurrences / torch.sum(occurrences)
+        if include_test:
+            train_temporal_popularity = train_temporal_popularity[:, - 1]
         return train_temporal_popularity
 
     def get_popularity(self, include_test=False, mode='test'):

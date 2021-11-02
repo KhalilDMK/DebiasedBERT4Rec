@@ -12,7 +12,7 @@ from pathlib import Path
 
 
 class TFTrainer(AbstractTrainer):
-    def __init__(self, args, model, train_loader, val_loader, test_loader, train_temporal_popularity, train_popularity, val_popularity, test_popularity, temporal_propensity, temporal_relevance, static_propensity):
+    def __init__(self, args, model, train_loader, val_loader, test_loader, train_temporal_popularity, val_temporal_popularity, test_temporal_popularity, train_popularity, val_popularity, test_popularity, temporal_propensity, temporal_relevance, static_propensity):
         super().__init__(args, model, train_loader, val_loader, test_loader)
 
         self.mse = nn.MSELoss()

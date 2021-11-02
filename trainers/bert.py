@@ -16,12 +16,12 @@ import sys
 
 
 class BERTTrainer(AbstractTrainer):
-    def __init__(self, args, model, train_loader, val_loader, test_loader, train_temporal_popularity, train_popularity, val_popularity, test_popularity, temporal_propensity, temporal_relevance, static_propensity):
+    def __init__(self, args, model, train_loader, val_loader, test_loader, train_temporal_popularity, val_temporal_popularity, test_temporal_popularity, train_popularity, val_popularity, test_popularity, temporal_propensity, temporal_relevance, static_propensity):
         super().__init__(args, model, train_loader, val_loader, test_loader)
 
         self.max_len = args.bert_max_len
         if args.mode in ['train_bert_real', 'tune_bert_real', 'loop_bert_real']:
-            self.preprocess_real_properties(train_temporal_popularity, train_popularity, val_popularity,
+            self.preprocess_real_properties(train_temporal_popularity, val_temporal_popularity, test_temporal_popularity, train_popularity, val_popularity,
                                        test_popularity)
         if args.mode in ['train_bert_semi_synthetic', 'tune_bert_semi_synthetic']:
             self.preprocess_semi_synthetic_properties(temporal_propensity, temporal_relevance, static_propensity)
@@ -52,7 +52,7 @@ class BERTTrainer(AbstractTrainer):
                 batch = [x.to(self.device) for x in batch]
 
                 if self.args.mode in ['train_bert_real', 'tune_bert_real', 'loop_bert_real']:
-                    metrics = self.calculate_metrics(batch, self.val_popularity_vector)
+                    metrics = self.calculate_metrics(batch, self.val_popularity_vector, self.val_temporal_popularity)
                 if self.args.mode in ['train_bert_semi_synthetic', 'tune_bert_semi_synthetic']:
                     metrics = self.calculate_metrics(batch)
 
@@ -97,7 +97,7 @@ class BERTTrainer(AbstractTrainer):
                 batch = [x.to(self.device) for x in batch]
 
                 if self.args.mode in ['train_bert_real', 'tune_bert_real', 'loop_bert_real']:
-                    metrics = self.calculate_metrics(batch, self.val_popularity_vector)
+                    metrics = self.calculate_metrics(batch, self.test_popularity_vector, self.test_temporal_popularity)
                 if self.args.mode in ['train_bert_semi_synthetic', 'tune_bert_semi_synthetic']:
                     metrics = self.calculate_metrics(batch)
 
@@ -230,7 +230,7 @@ class BERTTrainer(AbstractTrainer):
             logits = logits * relevance_enc
         elif self.args.loss_debiasing == 'temporal_propensity':
             temp_prop_enc = self.temporal_propensity[indices]
-            temp_prop_enc = torch.where(temp_prop_enc.double() > 0.2, temp_prop_enc.double(), 0.2)  # Propensity clipping
+            temp_prop_enc = torch.where(temp_prop_enc.double() > self.args.propensity_clipping, temp_prop_enc.double(), self.args.propensity_clipping)  # Propensity clipping
             temp_prop_enc = torch.transpose(temp_prop_enc, 1, 2)
             temp_prop_enc = temp_prop_enc.reshape(-1, temp_prop_enc.size(-1))
             logits = torch.div(logits, temp_prop_enc)
@@ -239,6 +239,8 @@ class BERTTrainer(AbstractTrainer):
             #loss = torch.min(torch.mean(- logits))
         elif self.args.loss_debiasing == 'static_propensity':
             stat_prop_enc = self.static_propensity[indices]
+            stat_prop_enc = torch.where(stat_prop_enc.double() > self.args.propensity_clipping, stat_prop_enc.double(),
+                                        self.args.propensity_clipping)  # Propensity clipping
             stat_prop_enc = stat_prop_enc.unsqueeze(1)
             stat_prop_enc = stat_prop_enc.repeat(1, self.args.bert_max_len, 1)
             stat_prop_enc = stat_prop_enc.reshape(-1, stat_prop_enc.size(-1))
@@ -246,17 +248,19 @@ class BERTTrainer(AbstractTrainer):
         loss = self.nll(logits, labels)
         return loss
 
-    def calculate_metrics(self, batch, popularity_vector=[]):
+    def calculate_metrics(self, batch, popularity_vector=[], temporal_popularity=[]):
         seqs, candidates, labels = batch
         scores = self.model(seqs)  # B x T x V
         scores = scores[:, -1, :]  # B x V
         scores = scores.gather(1, candidates)  # B x C
 
-        metrics = metrics_for_ks(self.args, scores, labels, candidates, self.metric_ks, popularity_vector)
+        metrics = metrics_for_ks(self.args, scores, labels, candidates, self.metric_ks, popularity_vector, temporal_popularity)
         return metrics
 
-    def preprocess_real_properties(self, train_temporal_popularity, train_popularity, val_popularity, test_popularity):
+    def preprocess_real_properties(self, train_temporal_popularity, val_temporal_popularity, test_temporal_popularity, train_popularity, val_popularity, test_popularity):
         self.train_temporal_popularity = self.preprocess_temporal_popularity(train_temporal_popularity)
+        self.val_temporal_popularity = self.preprocess_popularity_vector(val_temporal_popularity)
+        self.test_temporal_popularity = self.preprocess_popularity_vector(test_temporal_popularity)
         self.train_popularity_vector = self.preprocess_popularity_vector(train_popularity)
         self.val_popularity_vector = self.preprocess_popularity_vector(val_popularity)
         self.test_popularity_vector = self.preprocess_popularity_vector(test_popularity)
