@@ -19,7 +19,26 @@ def recall(hits, labels, k):
     return hits.sum(1).mean().cpu().item()
 
 
+def recall_itps(hits, labels, candidates, k, temporal_popularity):
+    targets = candidates[:, 0].tolist()
+    target_temporal_popularities = temporal_popularity[targets]
+    hits = torch.div(hits, target_temporal_popularities.unsqueeze(1))
+    return hits.sum(1).mean().cpu().item()
+
+
 def ndcg(hits, labels, k):
+    position = torch.arange(2, 2 + k)
+    weights = 1 / torch.log2(position.float())
+    dcg = (hits * weights.to(hits.device)).sum(1)
+    idcg = torch.Tensor([weights[:min(int(n), k)].sum() for n in labels.sum(1)]).to(dcg.device)
+    ndcg = (dcg / idcg).mean().cpu().item()
+    return ndcg
+
+
+def ndcg_itps(hits, labels, candidates, k, temporal_popularity):
+    targets = candidates[:, 0].tolist()
+    target_temporal_popularities = temporal_popularity[targets]
+    hits = torch.div(hits, target_temporal_popularities.unsqueeze(1))
     position = torch.arange(2, 2 + k)
     weights = 1 / torch.log2(position.float())
     dcg = (hits * weights.to(hits.device)).sum(1)
@@ -62,9 +81,8 @@ def auc_score(p, q):
     return roc_auc_score(q.tolist(), p.tolist(), labels=[0, 1])
 
 
-def metrics_for_ks(args, scores, labels, candidates, ks, popularity_vector):
+def metrics_for_ks(args, scores, labels, candidates, ks, popularity_vector, temporal_popularity):
     metrics = {}
-
     labels_float = labels.float()
     rank = (-scores).argsort(dim=1)
     ranked_candidates = candidates.gather(1, rank)
@@ -72,11 +90,18 @@ def metrics_for_ks(args, scores, labels, candidates, ks, popularity_vector):
         cut = rank[:, :k]
         cut_candidates = ranked_candidates[:, :k]
         hits = labels_float.gather(1, cut)
-        metrics['Recall@%d' % k] = recall(hits, labels, k)
-        metrics['NDCG@%d' % k] = ndcg(hits, labels, k)
         if args.mode in ['train_bert_real', 'tune_bert_real', 'loop_bert_real']:
+            if args.unbiased_eval:
+                metrics['Recall@%d' % k] = recall_itps(hits, labels, candidates, k, temporal_popularity)
+                metrics['NDCG@%d' % k] = ndcg_itps(hits, labels, candidates, k, temporal_popularity)
+            else:
+                metrics['Recall@%d' % k] = recall(hits, labels, k)
+                metrics['NDCG@%d' % k] = ndcg(hits, labels, k)
             metrics['AvgPop@%d' % k] = avg_popularity(cut_candidates, labels.device, popularity_vector)
             metrics['EFD@%d' % k] = efd(cut_candidates, labels.device, popularity_vector)
+        else:
+            metrics['Recall@%d' % k] = recall(hits, labels, k)
+            metrics['NDCG@%d' % k] = ndcg(hits, labels, k)
 
     return metrics
 
