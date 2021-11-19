@@ -6,7 +6,7 @@ from tqdm import tqdm
 import pickle
 from pathlib import Path
 from dataloaders.utils import *
-from trainers.utils import positional_frequency
+from trainers.utils import positional_frequency, avg_popularity, efd
 import os
 import json
 from torch.utils.tensorboard import SummaryWriter
@@ -120,6 +120,7 @@ class BERTTrainer(AbstractTrainer):
         best_model = torch.load(os.path.join(self.export_root, 'models', 'best_acc_model.pth')).get('model_state_dict')
         self.model.load_state_dict(best_model)
         self.model.eval()
+        interacted_recommendations = None
         recommendations = None
         softmax = nn.Softmax(dim=1)
         with torch.no_grad():
@@ -133,21 +134,25 @@ class BERTTrainer(AbstractTrainer):
                 train_batch_indices, train_item_indices = self.get_indices_to_ignore(seqs, num_items)
                 scores = softmax(scores)
                 scores[train_batch_indices, train_item_indices] = float('-inf')
-                batch_recommendations = self.generate_batch_recommendations(seqs, scores)
+                batch_recommendations, batch_interacted_recommendations = self.generate_batch_recommendations(seqs, scores)
+                if interacted_recommendations == None:
+                    interacted_recommendations = batch_interacted_recommendations
+                else:
+                    interacted_recommendations = torch.cat((interacted_recommendations, batch_interacted_recommendations))
                 if recommendations == None:
                     recommendations = batch_recommendations
                 else:
                     recommendations = torch.cat((recommendations, batch_recommendations))
         if self.args.mode in ['tune_bert_real', 'tune_bert_semi_synthetic', 'tune_tf']:
             with Path(self.export_root).joinpath('recommendations', 'rec_config_(' + str(self.args.bert_hidden_units) + ', ' + str(self.args.bert_num_blocks) + ', ' + str(self.args.bert_num_heads) + ', ' + str(self.args.bert_dropout) + ', ' + str(self.args.bert_mask_prob) + ', ' + str(self.args.skew_power) + ')_rep_' + str(self.args.rep) + '.pkl').open('wb') as f:
-                pickle.dump(recommendations.tolist(), f)
+                pickle.dump(interacted_recommendations.tolist(), f)
         else:
             with Path(self.export_root).joinpath('recommendations', 'rec_iter_' + str(self.args.iteration) + '.pkl').open('wb') as f:
-                pickle.dump(recommendations.tolist(), f)
-        print('recommendations: ' + str(recommendations))
-        return recommendations.to(self.device)
+                pickle.dump(interacted_recommendations.tolist(), f)
+        print('Interacted recommendations: ' + str(interacted_recommendations))
+        return interacted_recommendations.to(self.device), recommendations.to(self.device)
 
-    def final_data_eval_save_results(self):
+    def final_data_eval_save_results(self, recommendations):
         if self.args.mode in ['train_bert_real', 'tune_bert_real', 'loop_bert_real']:
             data_temp_prop_bias = position_bias_in_data(self.train_temporal_popularity)
             data_stat_prop_bias = propensity_bias_in_data(self.train_popularity_vector)
@@ -161,6 +166,8 @@ class BERTTrainer(AbstractTrainer):
             data_temp_expo_bias_mse = temporal_exposure_bias_in_data_mse(self.train_temporal_popularity)
             data_temp_expo_bias_mae = temporal_exposure_bias_in_data_mae(self.train_temporal_popularity)
             ips_bias_condition = bias_relaxed_condition(self.train_temporal_popularity)
+            avg_pop_recs_at_k = avg_popularity(recommendations, self.device, self.test_popularity_vector)
+            efd_recs_at_k = efd(recommendations, self.device, self.test_popularity_vector)
             self.average_metrics['data_temp_prop_bias'] = float(data_temp_prop_bias)
             self.average_metrics['data_stat_prop_bias'] = float(data_stat_prop_bias)
             self.average_metrics['data_stat_prop_bias_kl_p_u'] = float(data_stat_prop_bias_kl_p_u)
@@ -173,6 +180,8 @@ class BERTTrainer(AbstractTrainer):
             self.average_metrics['data_temp_expo_bias_mse'] = float(data_temp_expo_bias_mse)
             self.average_metrics['data_temp_expo_bias_mae'] = float(data_temp_expo_bias_mae)
             self.average_metrics['ips_bias_condition'] = float(ips_bias_condition)
+            self.average_metrics['AvgPop_recs@' + str(self.args.top_k_recom)] = float(avg_pop_recs_at_k)
+            self.average_metrics['EFD_recs@' + str(self.args.top_k_recom)] = float(efd_recs_at_k)
         if self.args.mode in ['tune_bert_real', 'tune_bert_semi_synthetic', 'tune_tf']:
             with open(os.path.join(self.export_root, 'logs', 'test_metrics_config_(' + str(self.args.bert_hidden_units) + ', ' + str(self.args.bert_num_blocks) + ', ' + str(self.args.bert_num_heads) + ', ' + str(self.args.train_batch_size) + ', ' + str(self.args.bert_dropout) + ', ' + str(self.args.bert_mask_prob) + ', ' + str(self.args.skew_power) + ')_rep_' + str(self.args.rep) + '.json'), 'w') as f:
                 json.dump(self.average_metrics, f, indent=4)

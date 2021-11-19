@@ -4,6 +4,7 @@ from dataloaders import dataloader_factory
 from trainers import trainer_factory
 from utils import *
 import itertools
+import gc
 
 
 def train_bert_real():
@@ -14,13 +15,14 @@ def train_bert_real():
     trainer = trainer_factory(args, model, train_loader, val_loader, test_loader, train_temporal_popularity, val_temporal_popularity, test_temporal_popularity, train_popularity, val_popularity, test_popularity)
     trainer.train()
     trainer.test()
-    recommendations = trainer.recommend()
-    trainer.final_data_eval_save_results()
+    interacted_recommendations, recommendations = trainer.recommend()
+    trainer.final_data_eval_save_results(recommendations)
 
 
 def loop_bert_real():
     for i in range(args.num_iterations):
         print('#' * 20 + '\nIteration ' + str(i) + '\n' + '#' * 20)
+        gc.collect()
         torch.cuda.empty_cache()
         train_bert_real()
     plot_evolution(args.export_root, args.num_iterations)
@@ -105,7 +107,7 @@ def train_bert_semi_synthetic():
     trainer = trainer_factory(args, model, train_loader, val_loader, test_loader, temporal_propensity=temporal_propensity, temporal_relevance=temporal_relevance, static_propensity=static_propensity)
     trainer.train()
     trainer.test()
-    trainer.final_data_eval_save_results()
+    trainer.final_data_eval_save_results([])
 
 
 def tune_bert_semi_synthetic():

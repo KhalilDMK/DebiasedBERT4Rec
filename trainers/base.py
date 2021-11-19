@@ -134,5 +134,5 @@ class AbstractTrainer(metaclass=ABCMeta):
         batch_recommendations = batch_recommendations[1]
         batch_indices = range(seqs.shape[0])
         item_random_indices = random.choices(range(self.args.top_k_recom), k=seqs.shape[0])
-        batch_recommendations = batch_recommendations[batch_indices, item_random_indices]
-        return batch_recommendations
+        batch_interacted_recommendations = batch_recommendations[batch_indices, item_random_indices]
+        return batch_recommendations, batch_interacted_recommendations
