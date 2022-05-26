@@ -121,9 +121,9 @@ class TFTrainer(AbstractTrainer):
                 scores = self.model(seqs, items, times)
                 if self.args.tf_target == 'exposure':
                     scores = torch.sigmoid(scores)
-                gen_seqs = torch.cat((gen_seqs, seqs))
-                gen_items = torch.cat((gen_items, items))
-                gen_times = torch.cat((gen_times, times))
+                gen_seqs = torch.cat((gen_seqs, seqs.float()))
+                gen_items = torch.cat((gen_items, items.float()))
+                gen_times = torch.cat((gen_times, times.float()))
                 gen_score = torch.cat((gen_score, scores))
         if self.args.tf_target == 'exposure':
             score_type = 'interaction'

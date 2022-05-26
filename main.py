@@ -72,7 +72,6 @@ def tune_tf():
     for hyperparameter in hyperparameters:
         exec('tune_' + hyperparameter + ' = eval(eval("args.tune_" + hyperparameter))')
         hyper_tun_configurations.append(eval('tune_' + hyperparameter))
-    print(hyper_tun_configurations)
     hyper_tun_configurations = random.sample(set(itertools.product(*hyper_tun_configurations)), num_configurations)
     for configuration in hyper_tun_configurations:
         print('#' * 50 + '\nconfiguration ' + str(configuration) + '\n' + '#' * 50)
