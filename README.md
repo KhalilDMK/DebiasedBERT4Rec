@@ -7,7 +7,9 @@ Link to paper:
 
 ## Authors
 Khalil Damak, University of Louisville.
+
 Sami Khenissi, University of Louisville.
+
 Olfa Nasraoui, University of Louisville.
 
 ## Abstract
