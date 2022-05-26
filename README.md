@@ -6,11 +6,9 @@ Accepted at KDD '22.
 Link to paper: 
 
 ## Authors
-Khalil Damak, University of Louisville.
-
-Sami Khenissi, University of Louisville.
-
-Olfa Nasraoui, University of Louisville.
+Khalil Damak, University of Louisville.<br>
+Sami Khenissi, University of Louisville.<br>
+Olfa Nasraoui, University of Louisville.<br>
 
 ## Abstract
 Bidirectional Transformer architectures are state-of-the-art sequential recommendation models that use a bi-directional representation capacity based on the Cloze task, a.k.a. Masked Language Model. The latter aims to predict randomly masked items within the sequence. Because they assume that the true interacted item is the most relevant one, an exposure bias results, where non-interacted items with low exposure propensities are assumed to be irrelevant. The most common approach to mitigating exposure bias in recommendation has been Inverse Propensity Scoring (IPS), which consists of down-weighting the interacted predictions in the loss function in proportion to their propensities of exposure, yielding a theoretically unbiased learning.
