@@ -153,7 +153,7 @@ class AbstractDataset(metaclass=ABCMeta):
 
     def check_semi_synthetic_data(self):
         folder_path = self._get_rawdata_folder_path()
-        if all(folder_path.joinpath('generated', score + '.npy') for score in ['interaction', 'rating']):
+        if all(folder_path.joinpath('generated', score + '.npy').is_file() for score in ['interaction', 'rating']):
             print('Semi-synthetic data exists.')
             return
         else:

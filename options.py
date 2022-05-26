@@ -117,7 +117,7 @@ parser.add_argument('--experiment_description', type=str, default='test')
 # Hyperparameter tuning
 ################
 parser.add_argument('--num_configurations', type=int, default=20, help='Number of random hyperparameter configurations.')
-parser.add_argument('--num_reps', type=int, default=2, help='Number of replicates in hyperparameter tuning.')
+parser.add_argument('--num_reps', type=int, default=5, help='Number of replicates in hyperparameter tuning.')
 parser.add_argument('--tune_bert_hidden_units', type=str, default='[64, 128, 256]', help='Tuning values for bert_hidden_units.')
 parser.add_argument('--tune_bert_num_blocks', type=str, default='[1, 2, 3]', help='Tuning values for bert_num_blocks.')
 parser.add_argument('--tune_bert_num_heads', type=str, default='[1, 2, 4, 8]', help='Tuning values for bert_num_heads.')
