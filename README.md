@@ -286,7 +286,7 @@ python -m main --template tune_ips_bert_real_amazon_beauty_pop_eval_sampling
 python -m main --template tune_itps_bert_real_amazon_beauty_pop_eval_sampling
 ```
 
-* Simulate a feedback loop with recommendations from the different models on the different datasets. The ranking evaluation is based on popularity negative sampling **(RQ6)**:
+* Simulate a feedback loop with recommendations from the different models on the different datasets. The ranking evaluation is based on popularity negative sampling **(RQ5)**:
 ```
 python -m main --template loop_bert_real_ml_1m_pop_eval_sampling
 python -m main --template loop_ips_bert_real_ml_1m_pop_eval_sampling
