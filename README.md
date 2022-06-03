@@ -304,7 +304,7 @@ We provide code ready to run on the:
 
 * Movielens 100K dataset.
 * Movielens 1M dataset.
-* Movielens 20M dataset. (due to a file size limit, you need to download the dataset and add it to a folder "Data/ml-20m" to be able to use it.)
+* Movielens 20M dataset. (due to a file size limit, you need to [download](https://grouplens.org/datasets/movielens/20m/) the dataset and add it to a folder "Data/ml-20m" to be able to use it.)
 * Amazon Beauty dataset.
 
 ## References
