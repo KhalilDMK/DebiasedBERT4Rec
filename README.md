@@ -3,7 +3,7 @@ Pytorch implementation of the paper "Debiasing the Cloze Task in Sequential Reco
 
 Accepted at KDD '22.
 
-Link to paper: 
+Link to paper: https://dl.acm.org/doi/abs/10.1145/3534678.3539430
 
 ## Authors
 Khalil Damak, University of Louisville.<br>
